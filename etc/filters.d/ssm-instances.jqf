@@ -1,0 +1,11 @@
+#cmd: ssm describe-instance-information
+#sort: IPAddress
+
+.InstanceInformationList | .[]? | {
+    InstanceId,
+    IPAddress,
+    ComputerName,
+    PingStatus,
+    AgentVersion,
+    PlatformName
+}

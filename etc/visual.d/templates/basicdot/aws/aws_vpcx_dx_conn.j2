@@ -1,0 +1,23 @@
+
+                subgraph cluster_dx_interface_connections {
+
+                    style=filled;
+                    color=lightgrey;
+                    node [style=filled,color=white];
+                    label = "DX Connections";
+
+                    {% for dxc in dx_connections -%}
+                    // {{ dxc|pprint }}
+                    {{ dxc.connectionId|gv_safe_id }} [label="{
+                        {{- dxc.connectionName -}}
+                        |{{- dxc.connectionId -}}
+                        |{{- dxc.bandwidth -}}
+                        |{{- dxc.awsDevice -}}
+                        |{{- dxc.ownerAccount -}}
+                        |{{- dxc.location -}}
+                        |{{- dxc.region -}}
+                        }"];
+                    {% endfor -%}
+
+                }
+

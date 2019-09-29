@@ -1,0 +1,39 @@
+{% block aws_route_table %}
+
+    subgraph cluster_all_route_tables {
+
+    {% for rt in route_tables %}
+
+        route_tables -> {{ rt.id|gv_safe_id }} [color="#666666",dir=none];
+
+        // RouteTable
+        {
+            node [style=filled]
+            {{ rt.id|gv_safe_id }} [label="{ {{- rt|gv_safe_name -}}|{{- rt.id|gv_safe_id -}}
+            {%- for route in rt.routes|sort(attribute='gateway_id') -%}
+                    |{{- route.destination_cidr_block -}}, {{- route.gateway_id -}}, {{- route.instance_id -}}, {{- route.origin|lut_replace(lut_routetable_origin) -}}, {{- route.state -}}
+            {%- endfor -%}
+            }"];
+        }
+
+        {% for rta in rt.associations %}
+        // RouteTableAssociation
+            {% if rta.subnet_id %}
+            {{ rt.id|gv_safe_id }} -> connected_{{ rta.subnet_id|gv_safe_id }}
+            {% endif %}
+            {% with -%}
+                {%- set filtered_subnets = subnets|selectattr("id", "equalto", rta.subnet_id)|list -%}
+                {%- if filtered_subnets -%}
+                    {%- for s in filtered_subnets -%}
+                    connected_{{ s.id|gv_safe_id }} [label="{ {{- s|gv_safe_name -}}|{{- s.id -}} }"];
+                    {%- endfor -%}
+                {%- endif -%}
+            {% endwith %}
+        {% endfor %}
+
+    {% endfor %}
+
+    }
+
+{% endblock %}
+

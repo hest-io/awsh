@@ -1,0 +1,30 @@
+/log
+/tmp
+/local
+/.vagrant
+
+# IDEs
+.idea/
+.project
+.pydevproject
+.settings/
+
+### Vim ###
+*.swp
+
+### SublimeText ###
+# workspace files are user-specific
+*.sublime-workspace
+*.sublime-project
+
+### Python ###
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pth
+
+wip/
+
+# Ignore docs for now until they are updated
+docs/
+/mkdocs.yml

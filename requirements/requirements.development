@@ -1,0 +1,10 @@
+# The requirements below are necessary if you want to develop on AWSH
+#
+# Work On: Documentation
+mkdocs==0.16.3
+mkdocs-material==1.8.1
+mkdocs-material-components==1.7.9
+Pygments==2.2.0
+pymdown-extensions==3.5
+# Work on: Commands
+ipython==5.0.0

@@ -1,0 +1,50 @@
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {% for v in filtered_items %}
+            {{ v }} -> vpc_dxcxs;
+            {% endfor %}
+            {% endwith %}
+
+            subgraph cluster_dx_interfaces {
+
+                style=filled;
+                color=lightgrey;
+                node [style=filled,color=white];
+                label = "DX";
+
+                vpc_dxcxs;
+
+                {% with -%}
+                {% set filtered_items = dx_interfaces|map(attribute="virtualInterfaceId")|gv_safe_id|list -%}
+                {% for x in filtered_items -%}
+                vpc_dxcxs -> {{ x }};
+                {% endfor -%}
+                {% endwith -%}
+
+                {% for dxif in dx_interfaces -%}
+                {{ dxif.virtualInterfaceId|gv_safe_id }} [label="{
+                    {{- dxif.virtualInterfaceName -}}
+                    |{{- dxif.virtualInterfaceId -}}
+                    |{{- dxif.virtualGatewayId -}}
+                    |{{- dxif.vlan -}}
+                    |{{- dxif.virtualInterfaceType -}}
+                    |{{- dxif.customerAddress -}}
+                    |{{- dxif.ownerAccount -}}
+                    |{{- dxif.addressFamily -}}
+                    |{{- dxif.connectionId -}}
+                    |{{- dxif.location -}}
+                    |{{- dxif.amazonAddress -}}
+                    |{{- dxif.asn -}}
+                    }"];
+                {{ dxif.virtualInterfaceId|gv_safe_id }} -> {{ dxif.connectionId|gv_safe_id }};
+                {% endfor -%}
+
+                {% if dx_connections %}
+                {% include 'aws/aws_vpcx_dx_conn.j2' %}
+                {% endif %}
+
+
+            }
+
+

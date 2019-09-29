@@ -1,0 +1,422 @@
+#!/usr/bin/env python2
+"""
+Basic script to provide AWS Session Tokens using Kerberos token in combination
+with a form based IDP service/portal to generate valid SAML2 Response that can
+be used for AWS API services
+
+This script only works once Kerberos auth is correctly configured on the local
+workstation. You can test this with
+    'kinit user@REALM' - Attempt to auth
+    'klist'            - List existing Kerberos tokens
+
+Usage:
+    awsh-token-krb5formauth-create <aws_region> <saml_idp_url> <idp_params> <principal> <creds_file> [<token_duration>] [ options ]
+    awsh-token-krb5formauth-create ( -h | --help )
+
+Arguments:
+  aws_region        The AWS Region to auth against
+  idp_params        A JSON dictionary of parameters that are needed for form
+                    based authentication. A value of '<ask>' can be used to
+                    trigger reading the value at runtime from the user. A value
+                    of '<password>' can be used to trigger reading the value at
+                    runtime securely
+  saml_idp_url      The IDP/SAML URL that is used to trigger authentication
+  principal         The identity to authenticate with in the form of user@REALM
+  creds_file        The filename to store credentials in if successful
+  token_duration    The duration in seconds that a requested token is valid for
+                    from the time of successful authentication [default: 14400]
+
+Options:
+  --sslverify       Whether or not to validate the SSL cert from the SAML URL.
+                    Generally not recommended for URLs using self-signed
+                    certificates
+  --debug           More verbose (usually debug) logging and output
+
+"""
+
+from future.utils import iteritems
+
+import sys
+import boto.sts
+import boto.s3
+from botocore.exceptions import ClientError
+import requests
+import getpass
+import base64
+import json
+import xml.etree.ElementTree as ET
+import re
+import logging
+from bs4 import BeautifulSoup
+from urlparse import urlparse, urljoin
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+import os
+import docopt
+from tabulate import tabulate
+from operator import itemgetter, attrgetter
+from collections import OrderedDict
+from awshutils.logger import AWSHLog
+from awshutils import check_imports
+from pprint import pprint as pp
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+CONST_DIR_TMP = "/tmp"
+CONST_AWSH_ROOT = os.getenv('AWSH_ROOT', '')
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+
+###############################################################################
+# Functions
+###############################################################################
+
+def multikeysort(items, columns):
+    # From: https://stackoverflow.com/questions/1143671/python-sorting-list-of-dictionaries-by-multiple-keys
+    _log.debug('Sorting rows with keys: {}'.format(columns))
+    comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else (itemgetter(col.strip()), 1)) for col in columns]
+
+    def lowercasevalues(d):
+        newDict = OrderedDict()
+        for k, v in d.iteritems():
+            if (isinstance(v, (str, basestring))):
+                v = v.lower()
+            newDict[k] = v
+        return newDict
+
+    def comparer(left, right):
+        for fn, mult in comparers:
+            result = cmp(fn(left), fn(right))
+            if result:
+                return mult * result
+        else:
+            return 0
+
+    sorted_items = sorted(items, cmp=comparer, key=lambda i: lowercasevalues(i))
+    _log.debug('Sorted rows: {}'.format(sorted_items))
+    return sorted_items
+
+
+
+def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, duration_seconds):
+
+    token = None
+
+    try:
+
+        _log.debug('Requesting token with specified [{}] duration'.format(duration_seconds))
+        token = connection.assume_role_with_saml(
+            role_arn,
+            principal_arn,
+            assertion,
+            duration_seconds=duration_seconds
+            )
+
+    except boto.exception.BotoServerError as e:
+
+        token_too_large_message = 'The requested DurationSeconds exceeds the MaxSessionDuration set for this role.'
+        if token_too_large_message == e.message:
+            _log.error('The requested DurationSeconds [{}] exceeds the MaxSessionDuration set for this role'.format(duration_seconds))
+            _log.warn('Attempting request using fallback DurationSeconds [3600]')
+
+            token = connection.assume_role_with_saml(
+                role_arn,
+                principal_arn,
+                assertion,
+                duration_seconds=3600
+                )
+
+    except Exception as e:
+        _log.error('An unhandled Exception occured')
+
+    return token
+
+
+
+###############################################################################
+# Main Loop
+###############################################################################
+
+_log = AWSHLog(__file__)
+check_imports()
+
+try:
+    options = docopt.docopt(__doc__)
+
+    if options['--debug'] is True:
+        _log.setLevel(logging.DEBUG)
+
+    if options['--sslverify'] is False:
+        _log.debug('Attempting to disable SSL Verify Warnings')
+        from requests.packages.urllib3.exceptions import InsecureRequestWarning
+        requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+
+    for key, value in iteritems(options):
+        _log.debug('command-line options: {}: {}'.format(key, value))
+
+    saml_idp_url = options['<saml_idp_url>']
+    idp_form_params = options['<idp_params>']
+    principal = options['<principal>']
+    ssl_verification = options['--sslverify']
+    aws_config_file = options['<creds_file>']
+    aws_region = options['<aws_region>']
+
+    if principal == "ASK":
+        print('You can get your Realm Principal from using the "klist | grep \'Default principal:\'" command')
+        principal = raw_input('Enter value for Realm Principal: ')
+
+    # Parse any form fields and ask user for input if needed
+    payload = {}
+
+    payload = json.loads(open(idp_form_params).read())
+    _log.debug('Loaded payload: {}'.format(payload))
+
+    for k in payload.keys():
+        if payload[k] == "<ask>":
+            payload[k] = raw_input('Enter value for form field [{}]: '.format(k))
+        if payload[k] == "<password>":
+            payload[k] = getpass.getpass('Enter value for password field [{}]: '.format(k))
+
+    # Using this log statement can expose credentials. This should never be
+    # enabled in a released version of the tools
+    _log.debug('Final payload: {}'.format(payload))
+
+    _log.debug('Building HTTP session')
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (compatible, MSIE 11, Windows NT 6.3; Trident/7.0; rv:11.0) like Gecko'
+    }
+
+    kerberos_auth = HTTPKerberosAuth(
+        mutual_authentication=OPTIONAL,
+        sanitize_mutual_error_response=False,
+        principal=principal
+        )
+
+    # Initiate session handler
+    session = requests.Session()
+
+    # Programmatically get the SAML assertion
+    # Opens the initial IdP url and follows all of the HTTP302 redirects, and
+    # gets the resulting login page
+    _log.debug('Connect to the IDP URL and load the credentials form')
+    formresponse = session.get(
+        saml_idp_url,
+        verify=ssl_verification,
+        auth=kerberos_auth
+        )
+
+    if formresponse.history:
+        _log.debug('Request was redirected')
+        for h in formresponse.history:
+            _log.debug('Code {} - Redirect url was {}'.format(h.status_code, h.url))
+
+    # Capture the idpauthformsubmiturl, which is the final url after all 302s
+    idpauthformsubmiturl = formresponse.url
+
+    # Parse the response and extract all the necessary values
+    # in order to build a dictionary of all of the form values the IdP expects
+    formsoup = BeautifulSoup(formresponse.text.decode('utf8'), "html.parser")
+
+    _log.debug('----- Headers -----')
+    _log.debug(formresponse.headers)
+    _log.debug('----- Response -----')
+    _log.debug(formresponse.text)
+    _log.debug('----- Response -----')
+
+    # Parse the response. It should contain a form from which we can extract
+    # and log the form fields
+    for inputtag in formsoup.find_all(re.compile('(INPUT|input)')):
+        name = inputtag.get('name', '')
+        value = inputtag.get('value', '')
+        _log.debug('Form input [{}] with value [{}]'.format(name, value))
+
+    # Some IdPs don't explicitly set a form action, but if one is set we should
+    # build the idpauthformsubmiturl by combining the scheme and hostname
+    # from the entry url with the form action target
+    # If the action tag doesn't exist, we just stick with the
+    # idpauthformsubmiturl above
+    for inputtag in formsoup.find_all(re.compile('(FORM|form)')):
+        action = inputtag.get('action')
+        _log.debug('Form action was [{}]'.format(action))
+        idpauthformsubmiturl = action
+
+        # If the URL we have is relative we need to build a full URL
+        if not idpauthformsubmiturl.startswith('http'):
+            idpauthformsubmiturl = urljoin(saml_idp_url, action)
+            # idpauthformsubmiturl = parsedurl.scheme + "://" + parsedurl.netloc + action
+            _log.debug('Recompiled form URL as [{}]'.format(idpauthformsubmiturl))
+
+    _log.debug('Posting payload to {}'.format(idpauthformsubmiturl))
+
+    # Performs the submission of the IdP login form with the above post data
+    response = session.post(
+        idpauthformsubmiturl,
+        data=payload,
+        verify=ssl_verification,
+        auth=kerberos_auth,
+        allow_redirects=True
+        )
+
+    # Debug the response if needed
+    _log.debug('----- Headers -----')
+    _log.debug(response.headers)
+    _log.debug('----- Response -----')
+    _log.debug(response.text)
+    _log.debug('----- Response -----')
+
+
+    # Check for bloody JavaScript injection doing the redirect.
+    _log.debug('Checking for JavaScript in the response that performs the redirect')
+    if 'location.href' in response.text:
+        _log.debug('JavaScript location hook detected in response text')
+        response = session.get(
+            saml_idp_url,
+            verify=ssl_verification,
+            auth=kerberos_auth
+        )
+
+        # Debug the response if needed
+        _log.debug('----- Headers -----')
+        _log.debug(response.headers)
+        _log.debug('----- Response -----')
+        _log.debug(response.text)
+        _log.debug('----- Response -----')
+
+
+    # Decode the response and extract the SAML assertion
+    soup = BeautifulSoup(response.text.decode('utf8'), "html.parser")
+    assertion = ''
+
+    # Look for the SAMLResponse attribute of the input tag (determined by
+    # analyzing the debug print lines above)
+    for inputtag in soup.find_all('input'):
+        if(inputtag.get('name') == 'SAMLResponse'):
+            _log.debug('Found SAMLResponse')
+            assertion = inputtag.get('value')
+            _log.debug(assertion)
+
+    # Better error handling is required for production use.
+    if (assertion == ''):
+        # TODO: Insert valid error checking/handling
+        _log.error('Response did not contain a valid SAML assertion.')
+        _log.warn('Ensure a valid Kerberos token is available using "klist" or create one using "kinit {}"'.format(principal))
+        sys.exit(1)
+
+    # Debug only
+    # print(base64.b64decode(assertion))
+
+
+    # Parse the returned assertion and extract the authorized roles
+    awsroles = []
+    root = ET.fromstring(base64.b64decode(assertion))
+    for saml2attribute in root.iter('{urn:oasis:names:tc:SAML:2.0:assertion}Attribute'):
+        if (saml2attribute.get('Name') == 'https://aws.amazon.com/SAML/Attributes/Role'):
+            for saml2attributevalue in saml2attribute.iter('{urn:oasis:names:tc:SAML:2.0:assertion}AttributeValue'):
+                awsroles.append(saml2attributevalue.text)
+
+    _log.debug('Allocated AWS Roles {}'.format(awsroles))
+
+    # Note the format of the attribute value should be role_arn,principal_arn
+    # but lots of blogs list it as principal_arn,role_arn so let's reverse
+    # them if needed
+    for awsrole in awsroles:
+        chunks = awsrole.split(',')
+        if'saml-provider' in chunks[0]:
+            newawsrole = chunks[1] + ',' + chunks[0]
+            index = awsroles.index(awsrole)
+            awsroles.insert(index, newawsrole)
+            awsroles.remove(awsrole)
+
+    # If I have more than one role, ask the user which one they want,
+    # otherwise just proceed
+    print ""
+    if len(awsroles) > 1:
+        i = 0
+        user_role_table = []
+        internal_role_table = []
+
+        # Group the roles by Account ID
+
+        for awsrole in awsroles:
+            r = awsrole.split(',')[0]
+            p = awsrole.split(',')[1]
+            account_id = r.split(':')[4]
+            role_name = r.split(':')[5]
+
+            internal_role_table.append({
+                "AWS Account": account_id,
+                "Role Name": role_name,
+                "role_arn": r,
+                "principal_arn": p
+            })
+
+            user_role_table.append({
+                "AWS Account": account_id,
+                "Role Name": role_name
+            })
+
+        # Sort the data
+        sorted_user_dict = multikeysort(user_role_table, ['AWS Account', 'Role Name'])
+        sorted_internal_dict = multikeysort(internal_role_table, ['AWS Account', 'Role Name'])
+        print("Please choose the role you would like to assume:")
+        print("")
+        print(tabulate(sorted_user_dict, headers='keys', tablefmt='simple', showindex=True))
+
+        print "Selection: ",
+        selectedroleindex = raw_input()
+
+        # Basic sanity check of input
+        if int(selectedroleindex) > (len(awsroles) - 1):
+            print 'You selected an invalid role index, please try again'
+            sys.exit(0)
+
+        role_arn = sorted_internal_dict[int(selectedroleindex)]['role_arn']
+        principal_arn = sorted_internal_dict[int(selectedroleindex)]['principal_arn']
+
+    else:
+        role_arn = awsroles[0].split(',')[0]
+        principal_arn = awsroles[0].split(',')[1]
+
+    # Use the assertion to get an AWS STS token using Assume Role with SAML
+    conn = boto.sts.connect_to_region(aws_region)
+
+
+    token = get_sts_token_with_duration(
+        conn,
+        role_arn,
+        principal_arn,
+        assertion,
+        duration_seconds=options['<token_duration>']
+    )
+
+    if token is not None:
+
+        _log.debug('Dumping STS Token')
+        _log.debug('aws_access_key_id {}'.format(token.credentials.access_key))
+        _log.debug('aws_secret_access_key {}'.format(token.credentials.secret_key))
+        _log.debug('aws_session_token {}'.format(token.credentials.session_token))
+        _log.debug('aws_token_expiry {}'.format(token.credentials.expiration))
+
+        # Write the updated config file
+        with open(aws_config_file, 'w+') as f:
+            f.write('aws_access_key_id {}\n'.format(token.credentials.access_key))
+            f.write('aws_secret_access_key {}\n'.format(token.credentials.secret_key))
+            f.write('aws_session_token {}\n'.format(token.credentials.session_token))
+            f.write('aws_token_expiry {}\n'.format(token.credentials.expiration))
+            f.close()
+
+        sys.exit(0)
+
+
+    sys.exit(1)
+
+
+# Handle invalid options
+except docopt.DocoptExit as e:
+    print(e.message)
+    sys.exit(1)

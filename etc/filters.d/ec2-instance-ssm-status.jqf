@@ -1,0 +1,14 @@
+#foreach: ec2 describe-instances | jq -r '.Reservations[]["Instances"] | .[] | .InstanceId'
+#cmd: ssm describe-instance-information --instance-information-filter-list "key=InstanceIds,valueSet=${item}"
+#enrich: jq --arg item "${item}" '(.InstanceId) = $item'
+#sort: CheckedInstanceId,IPAddress
+
+.[] | {
+    InstanceId,
+    CheckedInstanceId: ((.InstanceInformationList[0]? | .InstanceId) // "NA"),
+    IPAddress: ((.InstanceInformationList[0]? | .IPAddress) // "NA"),
+    ComputerName: ((.InstanceInformationList[0]? | .ComputerName) // "NA"),
+    PingStatus: ((.InstanceInformationList[0]? | .PingStatus) // "NA"),
+    AgentVersion: ((.InstanceInformationList[0]? | .AgentVersion) // "NA"),
+    PlatformName: ((.InstanceInformationList[0]? | .PlatformName) // "NA")
+}

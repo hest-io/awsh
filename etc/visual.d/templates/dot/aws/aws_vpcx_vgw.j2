@@ -1,0 +1,33 @@
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {rank="same" vpc_connections,{{ filtered_items|join(",") }}; }
+            {% for v in filtered_items %}
+            vpc_connections -> {{ v }} [ {{- style_snippet_edge -}} ];
+            {{ v }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpngw.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">Private Gateway</TD>
+                        </TR>
+                    </TABLE>> ];
+            {% endfor %}
+            {% endwith %}
+
+            {% block aws_vpcx_vpn %}
+
+                {% if vpns %}
+                {% include 'aws/aws_vpcx_vpn.j2' %}
+                {% endif %}
+
+            {% endblock %}
+
+            {% block aws_vpcx_dx %}
+
+                {% if dx_interfaces %}
+                {% include 'aws/aws_vpcx_dx_if.j2' %}
+                {% endif %}
+
+            {% endblock %}

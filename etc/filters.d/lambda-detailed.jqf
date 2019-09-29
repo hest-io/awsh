@@ -1,0 +1,10 @@
+#cmd: lambda list-functions
+#sort: FunctionName,LastModified
+
+.Functions | .[]? | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)

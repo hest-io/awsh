@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+#
+# This is a wrapper script for SCP
+#
+
+##############################################################################
+# Shell Behaviour
+##############################################################################
+
+# Check for unbound variables being used
+# set -o nounset
+
+# Exit is a bad command is attempted. If you're going to handle errors then
+# leave this disabled
+# set -o errexit
+
+# Exit if any of the commands in a pipeline exit with a non-zero exit code
+# set -o pipefail
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_COMMAND_LINE="$@"
+CONST_OS_VERSION=$(uname -r)
+CONST_SYSTEM_TYPE=$(uname -m)
+CONST_SCRIPT_NAME=${0##*/}
+
+# The PROJECT_ROOT is TWO level up from where the scripts run in the
+# 'bin/subcommands' directory
+PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+
+# Load the Frameverk
+. ${PROJECT_ROOT}/etc/awshrc
+
+# Current logging config
+TTY_OUTPUT_ENABLED=$TRUE
+LOG_OUTPUT_ENABLED=$TRUE
+SYSLOG_OUTPUT_ENABLED=$FALSE
+EVENT_OUTPUT_ENABLED=$TRUE
+export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
+
+# Default log file
+DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+# Define somewhere for specific log messages to go
+EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+export DEFAULT_OUT EVENT_LOG
+
+##############################################################################
+# Functions
+##############################################################################
+
+ip_from_instance_name() {
+    local target="$1"
+    _log "$LINENO" "Attempting to resolve target ${target}"
+
+    local private_ip="$(aws ec2 describe-instances --filters "Name=tag-key, Values=Name" "Name=tag-value, Values=${target}" --output=json \
+                        | $AWSH_ROOT/bin/tools/awsh-json2properties \
+                        | grep 'Reservations.0.Instances.0.PrivateIpAddress' \
+                        | awk -F'=' '{print $2}' \
+                        | tr -d '\"')"
+
+    local public_ip="$(aws ec2 describe-instances --filters "Name=tag-key, Values=Name" "Name=tag-value, Values=${target}" --output=json \
+                        | $AWSH_ROOT/bin/tools/awsh-json2properties \
+                        | grep 'Reservations.0.Instances.0.PublicIpAddress' \
+                        | awk -F'=' '{print $2}' \
+                        | tr -d '\"')"
+
+    if [ "" == "$public_ip" ]; then
+        _log "$LINENO" "No public IP discovered"
+        echo "$private_ip"
+    else
+        _log "$LINENO" "Discovered Private and Public IPs"
+        echo "$public_ip"
+    fi
+
+}
+
+show_help() {
+    cat <<EOF
+usage: $CONST_SCRIPT_NAME <target>:<path> <path> [options]
+       $CONST_SCRIPT_NAME ( -h | --help )
+
+EOF
+}
+
+##############################################################################
+# Main Script
+##############################################################################
+
+# Show most common commands if no args are given
+if { [ -z "$1" ] && [ -t 0 ] ; }
+then
+    show_help
+    exit 0
+fi
+
+# show help for no arguments if stdin is a terminal
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
+then
+    show_help
+    exit 0
+fi
+
+target="$(echo "$1" | sed -e 's/\(.*@\)//g' | sed -e 's/\(:.*\)//g')"
+target_address=$(ip_from_instance_name "$target")
+
+if [ -z $target_address ]; then
+    _log "$LINENO" "Host did not resolve to an IP"
+    exit 0
+fi
+
+new_command_line=$(echo "$CONST_COMMAND_LINE" | sed -e "s/${target}/${target_address}/g")
+
+_log "$LINENO" "Attempting connection to ${target_address}"
+if [ -s "$AWS_SSH_KEY" ]; then
+   scp -i "${AWS_SSH_KEY}" ${new_command_line}
+else
+   scp ${new_command_line}
+fi

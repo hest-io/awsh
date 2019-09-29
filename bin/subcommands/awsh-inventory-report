@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+#
+# Simple Inventory report
+#
+
+##############################################################################
+# Shell Behaviour
+##############################################################################
+
+# Check for unbound variables being used
+# set -o nounset
+
+# Exit is a bad command is attempted. If you're going to handle errors then
+# leave this disabled
+# set -o errexit
+
+# Exit if any of the commands in a pipeline exit with a non-zero exit code
+# set -o pipefail
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_COMMAND_LINE="$@"
+CONST_OS_VERSION=$(uname -r)
+CONST_SYSTEM_TYPE=$(uname -m)
+CONST_SCRIPT_NAME=${0##*/}
+
+# The PROJECT_ROOT is TWO level up from where the scripts run in the
+# 'bin/subcommands' directory
+PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+
+# Load the Frameverk
+. ${PROJECT_ROOT}/etc/awshrc
+
+# Current logging config
+TTY_OUTPUT_ENABLED=$TRUE
+LOG_OUTPUT_ENABLED=$TRUE
+SYSLOG_OUTPUT_ENABLED=$FALSE
+EVENT_OUTPUT_ENABLED=$TRUE
+export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
+
+# Default log file
+DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+# Define somewhere for specific log messages to go
+EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+export DEFAULT_OUT EVENT_LOG
+
+# Trap  abnormal termination
+trap cleanup 1 2 3 15
+
+output_dir="."
+output_format="simple"
+
+##############################################################################
+# Functions
+##############################################################################
+
+show_usage() {
+    cat <<EOF
+usage: $CONST_SCRIPT_NAME [-h] [-f <FORMAT>] [-d <OUTPUT-DIR>]
+
+The output format can be changed by using one of the supported formats:
+
+plain, simple, grid, fancy_grid, pipe, orgtbl, rst, mediawiki, html, latex,
+latex_booktabs, tsv (default: simple)
+
+EOF
+}
+
+
+cleanup() {
+    echo "Exiting."
+    exit 1
+}
+
+
+repeat() {
+    local input="$1"
+    local count="$2"
+    myString="$(printf "%${count}s")"
+    echo "${myString// /$input}"
+}
+
+
+title() {
+    echo "$(echo "${1}" | tr '[:lower:]' '[:upper:]' | sed -e "s/\-/ /g" -e "s/\_/ /g")"
+}
+
+
+# Format specific header
+fs_page_header() {
+    local fs_header="${AWSH_ROOT}/etc/report.d/${output_format}/page_header"
+    [ -f "${fs_header}" ] && . "${fs_header}"
+}
+
+
+# Format specific footer
+fs_page_footer() {
+    local fs_footer="${AWSH_ROOT}/etc/report.d/${output_format}/page_footer"
+    [ -f "${fs_footer}" ] && . "${fs_footer}"
+}
+
+
+# Format specific headings
+fs_heading() {
+    local level=$1
+    local val="${2}"
+    case ${output_format} in
+        pipe)
+            echo -e "\n$(repeat "#" ${level}) $(title "${val}")\n"
+            ;;
+        html)
+            let level=level+1
+            echo -e "\n<h${level}>$(title "${val}")</h${level}>\n"
+            ;;
+        *)
+            echo -e "\n$(title "${val}")\n"
+            ;;
+    esac
+}
+
+
+# show help for no arguments if stdin is a terminal
+while getopts ":f:d:h" opt; do
+  case $opt in
+    h)
+      show_usage
+      exit 0
+      ;;
+    f)
+      output_format="${OPTARG}"
+      ;;
+    d)
+      output_dir="${OPTARG}"
+      ;;
+    \?)
+      echo "Invalid option: -${OPTARG}" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -${OPTARG} requires an argument." >&2
+      exit 1
+      ;;
+  esac
+done
+
+
+##############################################################################
+# Main Script
+##############################################################################
+
+content_buffer="$(mktemp)"
+resource_filter="$(mktemp)"
+# These variables will be visible to the header and footer page templates
+aws_account_id="$(awsh whoami -f pipe | tail -1 | awk -F '|' '{print $2}' | tr -d '[:space:]')"
+aws_user="$(awsh whoami -f pipe | tail -1 | awk -F '|' '{print $4}' | tr -d '[:space:]')"
+
+
+_log "$LINENO" "Creating Inventory reports in [${output_format}] format into ${output_dir}"
+
+# Open a file for the report
+exec 4> "${output_dir}/aws-inventory-report-global.${output_format}"
+
+awsh_report_title="AWS Inventory Report: Global Resources"
+fs_page_header >&4
+
+# Build global resources first
+_log "$LINENO" "Creating inventory of known global resources"
+
+global_resources="$(grep -l '#geo: global' $AWSH_ROOT/etc/filters.d/*.jqf | xargs -i basename {} | sed -e 's/\.jqf$//g')"
+echo "${global_resources}" > ${resource_filter}
+
+for resource in ${global_resources}; do
+    fs_heading 2 "${resource}" >&4
+    awsh list "${resource}" -f "${output_format}" > "${content_buffer}" 2> /dev/null
+    if [ $? -eq 0 ]; then
+        cat "${content_buffer}" >&4
+    else
+        echo "None found" >&4
+    fi
+done
+
+fs_page_footer >&4
+# Close the report
+exec 4>&-
+
+
+# Iterate through each of the AWS Regions for the remaining known resource types
+region_list="$(aws ec2 describe-regions --output=text | awk '{print $3}')"
+current_region=$AWS_DEFAULT_REGION
+
+for region in $region_list; do
+    AWS_DEFAULT_REGION=${region}
+    export AWS_DEFAULT_REGION
+
+    # Open a file for the report
+    exec 4> "${output_dir}/aws-inventory-report-${AWS_DEFAULT_REGION}.${output_format}"
+
+    awsh_report_title="AWS Inventory Report: Regional Resources in ${AWS_DEFAULT_REGION}"
+    fs_page_header >&4
+
+    _log "$LINENO" "Creating inventory of known regional resources for [${AWS_DEFAULT_REGION}] region"
+    for resource in $(awsh list -c | grep -v -f ${resource_filter}); do
+        fs_heading 2 "${resource}"  >&4
+        awsh list "${resource}" -f "${output_format}" > "${content_buffer}" 2> /dev/null
+        if [ $? -eq 0 ]; then
+            cat "${content_buffer}"  >&4
+        else
+            echo "None found"  >&4
+        fi
+    done
+
+    fs_page_footer >&4
+    # Close the report
+    exec 4>&-
+
+done
+
+# Restore default region
+AWS_DEFAULT_REGION=${current_region}
+export AWS_DEFAULT_REGION
+
+# Cleanup
+[ -f ${content_buffer} ] && rm -f ${content_buffer}
+[ -f ${resource_filter} ] && rm -f ${resource_filter}

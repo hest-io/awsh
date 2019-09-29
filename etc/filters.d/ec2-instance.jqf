@@ -1,0 +1,17 @@
+#cmd: ec2 describe-instances
+#tidy: awsh-arnchomp
+#sort: VpcId,AZ,SubnetId,Name
+
+.Reservations[]["Instances"] | .[] | {
+    VpcId,
+    AZ: (.Placement|.AvailabilityZone),
+    SubnetId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State: (.State|.Name),
+    InstanceId,
+    PrivateIpAddress,
+    InstanceType,
+    KeyName,
+    PublicIpAddress: (.PublicIpAddress // "None"),
+    Description: ((.Tags[]?|select(.Key=="Description")|.Value) // "None")
+}

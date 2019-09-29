@@ -1,0 +1,9 @@
+#cmd: rds describe-db-subnet-groups
+#sort: VpcId,DBSubnetGroupName
+
+.DBSubnetGroups | .[] | {
+    VpcId,
+    DBSubnetGroupName,
+    DBSubnetGroupDescription,
+    Subnets: (([ .Subnets[]?.SubnetIdentifier ]|join(", ")) // "NA")
+}

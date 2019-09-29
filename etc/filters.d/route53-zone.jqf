@@ -1,0 +1,11 @@
+#cmd: route53 list-hosted-zones
+#sort: Name,Id
+#geo: global
+
+.HostedZones | .[]? | {
+    Name,
+    Id: (.Id|sub("\/hostedzone\/"; "")),
+    NumRecords: (.ResourceRecordSetCount // "0"),
+    IsPrivate: (.Config|.PrivateZone),
+    Comment: ((.Config|.Comment) // "None")
+}

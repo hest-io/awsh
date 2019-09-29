@@ -1,0 +1,24 @@
+{% block aws_az %}
+
+    {% for az in azs %}
+
+        VPC_{{ vpc.id|gv_safe_id }} -> subnets_az_{{ az|gv_safe_id }};
+
+        subgraph cluster_az_{{ az|gv_safe_id }} {
+
+            rankdir=BT
+
+            color=white;
+            node [style=filled];
+            label = "AvailabilityZone";
+
+            {% include 'aws/aws_subnet.j2' %}
+
+        }
+
+    {% endfor %}
+
+{% endblock %}
+
+
+

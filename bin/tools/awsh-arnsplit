@@ -1,0 +1,107 @@
+#!/usr/bin/env python2
+
+"""
+Simple utility to split a string containing an ARN into it's component parts
+based on the Gist from https://gist.github.com/gene1wood usin the AN namespace
+defined by Amazon
+
+arn:partition:service:region:account-id:resource
+arn:partition:service:region:account-id:resourcetype/resource
+arn:partition:service:region:account-id:resourcetype:resource
+
+Usage:
+    awsh-arnsplit [options] <arn>
+    awsh-arnsplit ( -h | --help )
+
+Options:
+    -t <token>, --token=<token>
+                        The token number to return. [default: resource]
+    -h, --help          Show this help message and exit
+    --debug             Show more verbose logging
+
+"""
+
+from future.utils import iteritems
+
+from awshutils.logger import AWSHLog
+from awshutils import check_imports, clean_up
+import docopt
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+_log = AWSHLog(__file__)
+check_imports()
+
+
+###############################################################################
+# Functions
+###############################################################################
+
+def parse_arn(arn):
+    # http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html
+    elements = arn.split(':')
+
+    result = {
+        'arn': elements[0],
+        'partition': elements[1],
+        'service': elements[2],
+        'region': elements[3],
+        'account': elements[4]
+    }
+
+    if len(elements) == 7:
+        result['resourcetype'], result['resource'] = elements[5:]
+    elif '/' not in elements[5]:
+        result['resource'] = elements[5]
+        result['resourcetype'] = None
+    else:
+        resourceTokens = elements[5].split('/')
+        result['resourcetype'] = resourceTokens[0]
+        result['resource'] = '/'.join(resourceTokens[1:])
+
+    return result
+
+
+def main(options):
+    """
+    The main program function
+    """
+
+    if options['--debug'] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug('command-line options: {}: {}'.format(key, value))
+
+    try:
+
+        arn_key = options['--token']
+        if options['<arn>']:
+            arn_dict = parse_arn(options['<arn>'])
+            if arn_key in arn_dict:
+                print('{}'.format(arn_dict[arn_key]))
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+if __name__ == "__main__":
+
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    # Handle invalid options
+    except docopt.DocoptExit as e:
+        print(e.message)
+

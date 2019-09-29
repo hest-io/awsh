@@ -1,0 +1,4 @@
+#cmd: ec2 describe-addresses
+#sort: PublicIp,PrivateIpAddress
+
+.Addresses | .[]

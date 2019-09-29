@@ -1,0 +1,51 @@
+#cmd: ec2 describe-security-groups
+#sort: VpcId,GroupName,GroupId,Direction,FromPort,ToPort
+
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name |.IpPermissions | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Inbound", IpProtocol, FromPort, ToPort, CidrIp: (.IpRanges[]?|.CidrIp), SG: null
+    }
+),
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name |.IpPermissions | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Inbound", IpProtocol, FromPort, ToPort, CidrIp: (.Ipv6Ranges[]?|.CidrIp), SG: null
+    }
+),
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name |.IpPermissions | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Inbound", IpProtocol, FromPort, ToPort, CidrIp: null, SG: (.UserIdGroupPairs[]?|.GroupId)
+    }
+),
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name | .IpPermissionsEgress | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Outbound", IpProtocol, FromPort, ToPort, CidrIp: (.IpRanges[]?|.CidrIp), SG: null
+    }
+),
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name | .IpPermissionsEgress | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Outbound", IpProtocol, FromPort, ToPort, CidrIp: (.Ipv6Ranges[]?|.CidrIp), SG: null
+    }
+),
+(
+    .SecurityGroups[] | .VpcId as $vpc_id | .GroupId as $group_id | .GroupName as $group_name |.IpPermissionsEgress | .[]? | {
+        VpcId: $vpc_id,
+        GroupId: $group_id,
+        GroupName: $group_name,
+        Direction: "Outbound", IpProtocol, FromPort, ToPort, CidrIp: null, SG: (.UserIdGroupPairs[]?|.GroupId)
+    }
+)

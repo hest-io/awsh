@@ -1,0 +1,14 @@
+#cmd: ec2 describe-vpn-connections
+#sort: VpnGatewayId,Name
+
+.VpnConnections | .[]? | {
+    VpnGatewayId,
+    VpnConnectionId,
+    CustomerGatewayId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State,
+    Type,
+    Routes: ([ .Routes[].DestinationCidrBlock ] | join(", ")),
+}
+
+

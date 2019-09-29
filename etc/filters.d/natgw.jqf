@@ -1,0 +1,12 @@
+#cmd: ec2 describe-nat-gateways
+#sort: VpcId,SubnetId,Name
+
+.NatGateways | .[]? | {
+    VpcId,
+    SubnetId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State,
+    PrivateIP: (.NatGatewayAddresses|.[0]|.PrivateIp),
+    PublicIP: (.NatGatewayAddresses|.[0]|.PublicIp),
+    NatGatewayId,
+}

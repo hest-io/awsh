@@ -1,0 +1,104 @@
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {% for v in filtered_items %}
+            {{ v }} -> vpc_dxcxs [ {{- style_snippet_edge -}} ];
+            {% endfor %}
+            {% endwith %}
+
+            subgraph cluster_dx_interfaces {
+
+                node [ {{- style_snippet_node -}} ];
+                label = "DX";
+                bgcolor="#FFFFFF"
+                color="#666666"
+                fillcolor="white"
+                style="dotted, filled"
+
+                vpc_dxcxs  [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_dx.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">DX</TD>
+                        </TR>
+                    </TABLE>> ];
+
+                {% with -%}
+                {% set filtered_items = dx_interfaces|map(attribute="virtualInterfaceId")|gv_safe_id|list -%}
+                {% for x in filtered_items -%}
+                vpc_dxcxs -> {{ x }} [ {{- style_snippet_edge -}} ];
+                {% endfor -%}
+                {% endwith -%}
+
+                {% for dxif in dx_interfaces -%}
+                {{ dxif.virtualInterfaceId|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_dx.png" /></TD>
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Interface Name {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.virtualInterfaceName -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Interface Id {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.virtualInterfaceId -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} VGWID {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.virtualGatewayId -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} VLAN {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.vlan -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Type {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.virtualInterfaceType -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Customer Address {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.customerAddress -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Owner Account {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.ownerAccount -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Address Family {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.addressFamily -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Connection Id {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.connectionId -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Location {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.location -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} Amazon Address {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.amazonAddress -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                                {{ key_td_b -}} BGP ASN {{- key_td_e }}
+                                {{ value_td_b -}} {{- dxif.asn -}} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+
+
+
+
+                {{ dxif.virtualInterfaceId|gv_safe_id }} -> {{ dxif.connectionId|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+                {% endfor -%}
+
+                {% if dx_connections %}
+                {% include 'aws/aws_vpcx_dx_conn.j2' %}
+                {% endif %}
+
+
+            }
+
+

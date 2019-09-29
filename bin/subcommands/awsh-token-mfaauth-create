@@ -1,0 +1,77 @@
+#!/usr/bin/env python2
+"""
+Basic script to provide AWS Session Tokens
+
+Usage:
+    awsh-token-mfaauth-create <access_key> <secret_key> <mfa_serial_number> <mfa_token> [<token_duration>] [ options ]
+    awsh-token-mfaauth-create ( -h | --help )
+
+Arguments:
+  access_key        The AWS Access Key token
+  secret_key        the AWS Secret Key token
+  mfa_serial_number The URN of the MFA user
+  mfa_token         The MFA token PIN acquired from the User
+  token_duration    The duration in seconds that a requested token is valid for
+                    from the time of successful authentication [default: 14400]
+
+Options:
+  --debug           More verbose (usually debug) logging and output
+
+"""
+
+from future.utils import iteritems
+
+import os
+import docopt
+import awshutils
+from awshutils.logger import AWSHLog
+from awshutils import check_imports, clean_up
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+CONST_DIR_TMP = "/tmp"
+CONST_AWSH_ROOT = os.getenv('AWSH_ROOT', '')
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+_log = AWSHLog(__file__)
+check_imports()
+
+import boto
+
+try:
+    options = docopt.docopt(__doc__)
+
+    if options['--debug'] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug('command-line options: {}: {}'.format(key, value))
+
+    access_key = options['<access_key>']
+    secret_key = options['<secret_key>']
+    mfa_serial_number = options['<mfa_serial_number>']
+    mfa_token = options['<mfa_token>']
+    mfa_token_duration = options['<token_duration>']
+
+    sts = boto.connect_sts(access_key, secret_key)
+    token = sts.get_session_token(
+        duration=mfa_token_duration,
+        force_new=True,
+        mfa_serial_number=mfa_serial_number,
+        mfa_token=mfa_token
+        )
+
+    print('aws_access_key_id {0}'.format(token.access_key))
+    print('aws_secret_access_key {0}'.format(token.secret_key))
+    print('aws_security_token {0}'.format(token.session_token))
+    print('aws_token_expiry {0}'.format(token.expiration))
+
+# Handle invalid options
+except docopt.DocoptExit as e:
+    print(e.message)

@@ -1,0 +1,19 @@
+
+            vpc_connections -> vpc_peerings [color="#666666",dir=none];
+
+            subgraph cluster_peering {
+
+                style=filled;
+                color=lightgrey;
+                node [style=filled,color=white];
+                label = "VPC Peering Connections";
+
+                vpc_peerings;
+
+                {% for p in peering_cx -%}
+                vpc_peerings -> {{ p.id|gv_safe_id }} -> {{ p.accepter_vpc_info.vpc_id|gv_safe_id }};
+                {{ p.id|gv_safe_id }} [label="{ {{- p|gv_safe_name -}}|{{- p.id -}} }"];
+                {{ p.accepter_vpc_info.vpc_id|gv_safe_id }} [label="{ {{- p.accepter_vpc_info.vpc_id -}}|{{- p.accepter_vpc_info.cidr_block }} }"];
+                {% endfor -%}
+
+            }

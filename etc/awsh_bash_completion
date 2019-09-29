@@ -1,0 +1,32 @@
+# Basic completion for BASH by listing available commands
+
+_awsh()
+{
+    local cur prev opts base
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    prev="${COMP_WORDS[COMP_CWORD-1]}"
+
+    case ${COMP_CWORD} in
+        1)
+            opts="$(awsh -c)"
+            COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
+            ;;
+        2)
+            case ${prev} in
+                list|dump)
+                    builtin_opts="$(ls -1 ${AWSH_ROOT}/etc/filters.d/*.jqf | xargs -i basename {} | sed -e 's/\.jqf$//g')"
+                    local_opts="$(ls -1 ${HOME}/.awsh/filters/*.jqf 2>/dev/null | xargs -i basename {} | sed -e 's/\.jqf$//g')"
+                    COMPREPLY=($(compgen -W "${builtin_opts} ${local_opts}" -- ${cur}))
+                    ;;
+            esac
+            ;;
+        *)
+            COMPREPLY=()
+            ;;
+    esac
+
+    return 0
+}
+
+

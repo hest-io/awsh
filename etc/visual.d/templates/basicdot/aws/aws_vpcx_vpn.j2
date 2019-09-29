@@ -1,0 +1,28 @@
+
+            subgraph cluster_vpns {
+
+                style=filled;
+                color=lightgrey;
+                node [style=filled,color=white];
+                label = "VPNs";
+
+                vpc_vpns;
+
+                {% for v in vpns -%}
+                vpc_vpns -> {{ v.id|gv_safe_id }} -> {{ v.customer_gateway_id|gv_safe_id }};
+                {{ v.id|gv_safe_id }} [label="{ {{- v|gv_safe_name -}}|{{- v.id -}} }"];
+                {% endfor -%}
+
+                {% for v in cgws -%}
+                {{ v.id|gv_safe_id }} [label="{ {{- v|gv_safe_name -}}|{{- v.id -}}|{{- v.type -}}|{{- v.ip_address -}}|{{- v.bgp_asn -}} }"];
+                {% endfor -%}
+
+            }
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {% for v in filtered_items -%}
+            {{ v }} -> vpc_vpns;
+            {% endfor -%}
+            {% endwith -%}
+

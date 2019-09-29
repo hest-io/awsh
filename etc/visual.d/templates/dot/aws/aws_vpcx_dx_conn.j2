@@ -1,0 +1,50 @@
+
+                subgraph cluster_dx_interface_connections {
+
+                    node [ {{- style_snippet_node -}} ];
+                    label = "DX Connections";
+                    bgcolor="#FFFFFF"
+                    color="#666666"
+                    fillcolor="white"
+                    style="dotted, filled"
+
+                    {% for dxc in dx_connections -%}
+                    // {{ dxc|pprint }}
+                    {{ dxc.connectionId|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                        <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                            <TR>
+                                <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_dx.png" /></TD>
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Connection Name {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.connectionName -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Connection Id {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.connectionId -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Bandwidth {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.bandwidth -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} AWS Device {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.awsDevice -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Owner Account {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.ownerAccount -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Location {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.location -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                    {{ key_td_b -}} Region {{- key_td_e }}
+                                    {{ value_td_b -}} {{- dxc.region -}} {{- value_td_e }}
+                            </TR>
+                        </TABLE>> ];
+                    {% endfor -%}
+
+                }
+

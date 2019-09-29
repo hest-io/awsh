@@ -1,0 +1,6 @@
+#cmd: redshift describe-cluster-snapshots
+#discard: Snapshots[].KmsKeyId,Snapshots[].RestorableNodeTypes,Snapshots[].Tags,Snapshots[].CurrentBackupRateInMegaBytesPerSecond,Snapshots[].ActualIncrementalBackupSizeInMegaBytes,Snapshots[].EstimatedSecondsToCompletion,Snapshots[].OwnerAccount,Snapshots[].NumberOfNodes,Snapshots[].Status,Snapshots[].ClusterVersion,Snapshots[].MasterUsername
+#sort: VpcId,ClusterIdentifier,SnapshotCreateTime
+
+.Snapshots[]
+

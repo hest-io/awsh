@@ -1,0 +1,12 @@
+cat <<SIMPLETEMPLATE
+
+${awsh_report_title}
+================================================================================
+
+AWS Account              : ${aws_account_id}
+Created from AWS Region  : ${AWS_DEFAULT_REGION}
+Created By               : ${aws_user}
+Created Date             : $(date)
+
+
+SIMPLETEMPLATE

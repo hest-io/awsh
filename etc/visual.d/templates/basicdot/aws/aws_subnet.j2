@@ -1,0 +1,22 @@
+{% block aws_subnets %}
+    {% for subnet in subnets %}
+        {% if subnet.availability_zone == az %}
+
+            subnets_az_{{ az|gv_safe_id }} -> sub_{{ subnet.id|gv_safe_id }};
+
+            subgraph cluster_az_subnets_{{ subnet.id|gv_safe_id }} {
+
+                color=lightgrey;
+                node [style=filled];
+                label = "Subnet";
+
+                sub_{{ subnet.id|gv_safe_id }} [label="{ {{- subnet|gv_safe_name -}}| {{- subnet.id|gv_safe_id -}} |mapPublicIpOnLaunch= {{- subnet.mapPublicIpOnLaunch|gv_safe_id -}} }"];
+
+                {% include 'aws/aws_ec2_instance.j2' %}
+
+            }
+
+        {% endif %}
+    {% endfor %}
+{% endblock %}
+

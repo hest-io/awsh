@@ -1,0 +1,10 @@
+#cmd: ec2 describe-images --owners self
+#sort: Name,CreationDate
+
+.Images | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)

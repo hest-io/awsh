@@ -1,0 +1,30 @@
+
+digraph AWS {
+
+    ranksep=0.65
+    nodesep=0.40
+
+    node [
+        labeljust="l"
+        colorscheme="pastel13"
+        style=filled
+        fillcolor=3
+        shape=record
+    ]
+
+    splines=ortho;
+    rankdir={{ graph_direction }}
+    overlap=scale;
+    bgcolor="#FFFFDD"
+    style="dotted, filled"
+    root="REGION_{{ region|gv_safe_id  }}";
+
+{% block aws_region %}
+
+    {% include 'aws/aws_region.j2' %}
+
+{% endblock %}
+
+    label="AWS Visualization of VPC: {{ vpc.id|gv_safe_id }}"
+
+}

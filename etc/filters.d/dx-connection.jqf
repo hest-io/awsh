@@ -1,0 +1,4 @@
+#cmd: directconnect describe-connections
+#sort: ownerAccount,location,connectionName
+
+.connections[]

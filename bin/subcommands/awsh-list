@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+#
+# Simple SecurityGroup report
+#
+
+##############################################################################
+# Shell Behaviour
+##############################################################################
+
+# Check for unbound variables being used
+# set -o nounset
+
+# Exit is a bad command is attempted. If you're going to handle errors then
+# leave this disabled
+# set -o errexit
+
+# Exit if any of the commands in a pipeline exit with a non-zero exit code
+# set -o pipefail
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_COMMAND_LINE="$@"
+CONST_OS_VERSION=$(uname -r)
+CONST_SYSTEM_TYPE=$(uname -m)
+CONST_SCRIPT_NAME=${0##*/}
+
+# The PROJECT_ROOT is TWO level up from where the scripts run in the
+# 'bin/subcommands' directory
+PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+
+# Load the Frameverk
+. ${PROJECT_ROOT}/etc/awshrc
+
+# Current logging config
+TTY_OUTPUT_ENABLED=$TRUE
+LOG_OUTPUT_ENABLED=$TRUE
+SYSLOG_OUTPUT_ENABLED=$FALSE
+EVENT_OUTPUT_ENABLED=$TRUE
+export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
+
+# Default log file
+DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+# Define somewhere for specific log messages to go
+EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+export DEFAULT_OUT EVENT_LOG
+
+# Trap  abnormal termination
+trap cleanup 1 2 3 15
+
+FILTER_ROOT="${PROJECT_ROOT}/etc/filters.d"
+AWSCLI_CMD=aws
+AWSCLI_DEFAULT_ARGS="--output=json"
+
+
+##############################################################################
+# Functions
+##############################################################################
+
+show_usage() {
+    cat <<EOF
+usage: $CONST_SCRIPT_NAME [--help] <resource> [-f <FORMAT>]
+       $CONST_SCRIPT_NAME ec2
+       $CONST_SCRIPT_NAME elb -f pipe
+
+The output format can be changed by using one of the supported formats:
+
+plain, simple, github, grid, fancy_grid, pipe, orgtbl, jira, presto, psql, rst,
+mediawiki, moinmoin, youtrack, html, latex, latex_raw, latex_booktabs, textile
+(default: simple)
+
+EOF
+}
+
+
+cleanup() {
+    echo "Exiting."
+    exit 1
+}
+
+
+show_completions() {
+
+    SUBCOMMANDS="$(find ${AWSH_ROOT}/etc/filters.d/ -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
+    VS_SUBCOMMANDS=( $SUBCOMMANDS )
+
+    saveIFS=$IFS
+    IFS=$'\n'
+    echo "${VS_SUBCOMMANDS[*]}" | sort
+    IFS=$saveIFS
+
+}
+
+
+_generate() {
+    for item in $(eval "aws ${output_generator}"); do
+        eval "${AWSCLI_CMD} ${awscli_cmd_args[@]} ${AWSCLI_DEFAULT_ARGS} | ${output_enricher[@]}"
+    done | jq --monochrome-output -s '.'
+}
+
+
+_filter() {
+    jq --monochrome-output --from-file "${filter_path}" \
+        | jq --monochrome-output -s '.'
+}
+
+
+_discard() {
+    saveIFS=$IFS
+    IFS=','
+    local discard_filter=". "
+    for k in ${output_discard}; do
+        discard_filter="${discard_filter} |del(.${k})"
+    done
+    IFS=$saveIFS
+    discard_filter_file="$(mktemp /tmp/awsh-list-XXXXXXX.jqf)"
+    echo "${discard_filter}" > "${discard_filter_file}"
+    jq --monochrome-output --from-file "${discard_filter_file}"
+    # [ -f "${discard_filter_file}" ] && rm -f "${discard_filter_file}"
+}
+
+
+_tabulate() {
+    cat \
+        | awsh-json2orderedtable -s "${output_sort_keys}" ${vs_table_helper_args[*]}
+}
+
+
+_tidy() {
+    ${output_tidy[@]}
+}
+
+
+# show help for no arguments if stdin is a terminal
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
+then
+    show_usage
+    exit 0
+fi
+
+
+# show lst of commands
+if [ "$1" == '-c' ] || [ "$1" == '--commands' ] || [ "$1" == 'commands' ]
+then
+    show_completions
+    exit 0
+fi
+
+
+resource_name=${1}
+vs_args=("${@}")
+vs_table_helper_args=("${vs_args[@]:1}")
+
+##############################################################################
+# Main Script
+##############################################################################
+
+filter_path=
+
+# Check for a valid filter in both AWSH and in the users' config
+if [ -f "${FILTER_ROOT}/${resource_name}.jqf" ]; then
+    filter_path="${FILTER_ROOT}/${resource_name}.jqf"
+fi
+
+if [ -f "${HOME}/.awsh/filters/${resource_name}.jqf" ]; then
+    filter_path="${HOME}/.awsh/filters/${resource_name}.jqf"
+fi
+
+if [ -z ${filter_path} ]; then
+    _log "$LINENO" "No filter defined for that resource. Check your available filters"
+    exit 1
+fi
+
+# Extract the subcommand for the awscli
+awscli_cmd_args="$(grep '^#cmd:' "${filter_path}" | head -1 | sed -r -e 's/^#cmd:(\s)?//g')"
+
+# Extract the sort order if present
+output_sort_keys="$(grep '^#sort:' "${filter_path}" | head -1 | sed -r -e 's/^#sort:(\s)?//g')"
+
+# Extract the generator if present
+output_generator="$(grep '^#foreach:' "${filter_path}" | head -1 | sed -r -e 's/^#foreach:(\s)?//g')"
+
+# Extract the omit filter if present
+output_discard="$(grep '^#discard:' "${filter_path}" | head -1 | sed -r -e 's/^#discard:(\s)?//g')"
+
+# Extract the enrichment helper if present
+output_enricher="$(grep '^#enrich:' "${filter_path}" | head -1 | sed -r -e 's/^#enrich:(\s)?//g')"
+output_enricher="${output_enricher:-cat}"
+
+# Check for output tidy pre-processor before tabulating data
+output_tidy="$(grep '^#tidy:' "${filter_path}" | head -1 | sed -r -e 's/^#tidy:(\s)?//g')"
+output_tidy="${output_tidy:-cat}"
+
+# Use the generator if one is configured, otherwise fallback to default filter
+# and tabulate processing
+if [[ "" != "${output_generator}" ]]; then
+
+    _generate | _discard | _filter | _tidy | _tabulate
+
+else
+
+    eval "${AWSCLI_CMD} ${awscli_cmd_args[@]} ${AWSCLI_DEFAULT_ARGS}" | _discard | _filter | _tidy | _tabulate
+
+fi

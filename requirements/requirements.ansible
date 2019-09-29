@@ -1,0 +1,5 @@
+# These are requirements to add support for Ansible to your AWSH environment
+# and includes connection support for both Linux and Windows servers/instances
+ansible>=2.4.0.0
+ansible-lint
+pywinrm>=0.2.2

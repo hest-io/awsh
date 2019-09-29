@@ -1,0 +1,23 @@
+#cmd: rds describe-db-instances
+#sort: VpcId,DBInstanceIdentifier,Name
+
+.DBInstances | .[]? | {
+    DBInstanceIdentifier,
+    DBName,
+    DBInstanceStatus,
+    AvailabilityZone,
+    VpcId: ((.DBSubnetGroup|.VpcId) // "Unknown"),
+    Engine,
+    EngineVersion,
+    DBInstanceClass,
+    AllocatedStorage,
+    Endpoint: ([(.Endpoint|.Address), (.Endpoint|.Port|tostring)]|join(":")),
+    PubliclyAccessible,
+    LicenseModel,
+    MultiAZ,
+    DBOptionGroups: ([ .OptionGroupMemberships[].OptionGroupName ]|join(", ")),
+    ParameterGroups: ([ .DBParameterGroups[].DBParameterGroupName ]|join(", ")), 
+    AutoMinorVersionUpgrade
+}
+
+

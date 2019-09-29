@@ -1,0 +1,11 @@
+#cmd: rds describe-db-instances
+# xsort: VpcId,DBInstanceIdentifier,Name
+
+.DBInstances | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)
+

@@ -1,0 +1,9 @@
+#cmd: iam list-roles
+#sort: RoleName,CreateDate,Arn
+#geo: global
+
+.Roles | .[] | {
+    RoleName,
+    CreateDate,
+    Arn
+}

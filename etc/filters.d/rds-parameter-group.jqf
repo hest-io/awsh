@@ -1,0 +1,4 @@
+#cmd: rds describe-db-parameter-groups
+#sort: DBParameterGroupFamily,DBParameterGroupName
+
+.DBParameterGroups | .[]

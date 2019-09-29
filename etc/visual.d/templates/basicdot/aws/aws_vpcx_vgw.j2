@@ -1,0 +1,24 @@
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {rank="same" vpc_connections,{{ filtered_items|join(",") }}; }
+            {% for v in filtered_items %}
+            vpc_connections -> {{ v }} [color="#666666",dir=none];
+            {% endfor %}
+            {% endwith %}
+
+            {% block aws_vpcx_vpn %}
+
+                {% if vpns %}
+                {% include 'aws/aws_vpcx_vpn.j2' %}
+                {% endif %}
+
+            {% endblock %}
+
+            {% block aws_vpcx_dx %}
+
+                {% if dx_interfaces %}
+                {% include 'aws/aws_vpcx_dx_if.j2' %}
+                {% endif %}
+
+            {% endblock %}

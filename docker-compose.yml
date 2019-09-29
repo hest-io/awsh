@@ -1,0 +1,30 @@
+---
+
+version: "3.2"
+
+services:
+
+  awsh:
+    build:
+      context: ./
+      dockerfile: ./Dockerfile
+      args:
+        http_proxy: "${http_proxy}"
+        https_proxy: "${https_proxy}"
+    image: "awsh:latest"
+    hostname: awsh
+    container_name: awsh
+    network_mode: "host"
+    volumes:
+      - ${HOME}/.awsh:/home/awsh/.awsh
+      - /etc/krb5.conf:/etc/krb5.conf
+      - /etc/krb5.conf.d/:/etc/krb5.conf.d/
+      - ${HOME}:/workspace
+      - /tmp:/tmp
+    environment:
+      HTTP_PROXY: "${http_proxy}"
+      http_proxy: "${http_proxy}"
+      HTTPS_PROXY: "${https_proxy}"
+      https_proxy: "${https_proxy}"
+      no_proxy: "${no_proxy}"
+      NO_PROXY: "${no_proxy}"

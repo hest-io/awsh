@@ -1,0 +1,10 @@
+#cmd: ec2 describe-vpc-endpoints
+#sort: VpcId,ServiceName,VpcEndpointType
+
+.VpcEndpoints[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+) | del (.PolicyDocument) 

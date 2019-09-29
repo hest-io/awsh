@@ -1,0 +1,9 @@
+#cmd: ec2 describe-vpn-gateways
+#sort: VpnGatewayId,Name
+
+.VpnGateways | .[]? | {
+    VpnGatewayId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State,
+    Attachment: ((.VpcAttachments|.[0]|.VpcId) // "None")
+}

@@ -1,0 +1,86 @@
+{% block aws_route_table %}
+
+    route_tables [ {{- style_snippet_node -}}, label="VPC Route Tables" ];
+
+    subgraph cluster_all_route_tables {
+
+    node [ {{- style_snippet_node -}} ];
+    label = "Route Tables";
+    bgcolor="#FFFFFF"
+    color="#666666"
+    fillcolor="white"
+    style="dotted, filled"
+
+    {% for rt in route_tables %}
+
+        route_tables -> {{ rt.id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+
+        // RouteTable
+        {
+            node [ {{- style_snippet_node -}} ]
+
+            {{ rt.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_route_table.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Name {{- key_td_e }}
+                            {{ value_td_b -}} {{- rt|gv_safe_name -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} ID {{- key_td_e }}
+                            {{ value_td_b -}} {{ rt.id }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ table_key_td_b -}} CIDR {{- table_key_td_e }}
+                            {{ table_key_td_b -}} Gateway {{- table_key_td_e }}
+                            {{ table_key_td_b -}} Instance {{- table_key_td_e }}
+                            {{ table_key_td_b -}} Origin {{- table_key_td_e }}
+                        </TR>
+            {%- for route in rt.routes|sort(attribute='gateway_id') -%}
+                        <TR>
+                            {{ table_value_td_b -}} {{- route.destination_cidr_block -}} {{- table_value_td_e }}
+                            {{ table_value_td_b -}} {{- route.gateway_id -}} {{- table_value_td_e }}
+                            {{ table_value_td_b -}} {{- route.instance_id -}} {{- table_value_td_e }}
+                            {{ table_value_td_b -}} {{- route.origin|lut_replace(lut_routetable_origin) -}} {{- table_value_td_e }}
+                        </TR>
+            {%- endfor -%}
+                    </TABLE>> ];
+
+        }
+
+        {% for rta in rt.associations %}
+        // RouteTableAssociation
+            {% if rta.subnet_id %}
+            {{ rt.id|gv_safe_id }} -> connected_{{ rta.subnet_id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+            {% endif %}
+            {% with -%}
+                {%- set filtered_subnets = subnets|selectattr("id", "equalto", rta.subnet_id)|list -%}
+                {%- if filtered_subnets -%}
+                    {%- for s in filtered_subnets -%}
+                    connected_{{ s.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                        <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                            <TR>
+                                <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_subnet.png" /></TD>
+                            </TR>
+                            <TR>
+                                {{ key_td_b -}} Name {{-key_td_e }}
+                                {{ value_td_b -}} {{- s|gv_safe_name -}} {{- value_td_e }}
+                            </TR>
+                            <TR>
+                                {{ key_td_b -}} ID {{-key_td_e }}
+                                {{ value_td_b -}} {{ s.id }} {{- value_td_e }}
+                            </TR>
+                        </TABLE>> ];
+                    {%- endfor -%}
+                {%- endif -%}
+            {% endwith %}
+        {% endfor %}
+
+    {% endfor %}
+
+    }
+
+{% endblock %}
+

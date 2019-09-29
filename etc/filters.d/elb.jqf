@@ -1,0 +1,12 @@
+#cmd: elb describe-load-balancers
+#sort: VPCId,LoadBalancerName,Scheme
+
+.LoadBalancerDescriptions[] | {
+    VPCId,
+    LoadBalancerName,
+    Scheme,
+    Listeners: ([ .ListenerDescriptions[].Listener | "\(.Protocol)/\(.LoadBalancerPort)__to__\(.InstanceProtocol)/\(.InstancePort)" ] | join(", ")),
+    HealthCheck: "\(.HealthCheck.Target)",
+    SecurityGroups: (.SecurityGroups|join(", ")),
+    Instances: ([ .Instances[].InstanceId ]|join(", "))
+}

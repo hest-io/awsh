@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#
+# Based on the example given in http://stackoverflow.com/a/34809183
+
+IFS='' read -r JUST1LIINE
+printf "%s\n" "$JUST1LIINE"
+exec "$@"

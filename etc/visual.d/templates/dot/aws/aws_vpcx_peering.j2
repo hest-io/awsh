@@ -1,0 +1,57 @@
+
+            vpc_connections -> vpc_peerings [ {{- style_snippet_edge -}} ];
+
+            subgraph cluster_peering {
+
+                node [  {{- style_snippet_node -}} ];
+                label = "VPC Peering Connections";
+                bgcolor="#FFFFFF"
+                color="#666666"
+                fillcolor="white"
+                style="dotted, filled"
+
+                vpc_peerings [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpc_peer.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">Peering Connections</TD>
+                        </TR>
+                    </TABLE>> ];
+
+                {% for p in peering_cx -%}
+                vpc_peerings -> {{ p.id|gv_safe_id }} -> {{ p.accepter_vpc_info.vpc_id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+                {{ p.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpc_peer.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Name {{-key_td_e }}
+                            {{ value_td_b -}} {{- p|gv_safe_name -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} ID {{-key_td_e }}
+                            {{ value_td_b -}} {{ p.id }} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+
+                {{ p.accepter_vpc_info.vpc_id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpc_peer.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Peer VPC {{-key_td_e }}
+                            {{ value_td_b -}} {{ p.accepter_vpc_info.vpc_id }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Peer CIDR {{-key_td_e }}
+                            {{ value_td_b -}} {{ p.accepter_vpc_info.cidr_block }} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+
+                {% endfor -%}
+
+            }

@@ -1,0 +1,32 @@
+{% block aws_az %}
+
+    {% for az in azs %}
+
+        VPC_{{ vpc.id|gv_safe_id }} -> subnets_az_{{ az|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+
+        subnets_az_{{ az|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_az.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">AZ {{ az }}</TD>
+                        </TR>
+                    </TABLE>> ];
+
+        subgraph cluster_az_{{ az|gv_safe_id }} {
+
+            color="#F58536"
+            fillcolor="white"
+            style="dashed, filled"
+
+            node [ {{- style_snippet_node -}} ];
+            label = "AvailabilityZone";
+
+            {% include 'aws/aws_subnet.j2' %}
+
+        }
+
+    {% endfor %}
+
+{% endblock %}

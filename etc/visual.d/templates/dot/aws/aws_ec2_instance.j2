@@ -1,0 +1,57 @@
+{% block ec2_instance %}
+
+                    {% with -%}
+                    {% set filtered_instance_ids = instances|selectattr("subnet_id", "equalto", subnet.id)|map(attribute="id")|gv_safe_id|list -%}
+                    {% for grp in filtered_instance_ids|batch(6) %}
+                    sub_{{ subnet.id|gv_safe_id }} -> {{ grp|join(" -> ") }} [ {{- style_snippet_edge -}} ];
+                    {% endfor %}
+                    {% endwith %}
+
+                    subgraph cluster_instances_group_{{ subnet.id|gv_safe_id }} {
+
+                        node [ {{- style_snippet_node -}} ];
+                        label = "Instances";
+                        bgcolor="#FFFFFF"
+                        color="#666666"
+                        fillcolor="white"
+                        style="dotted, filled"
+
+                        {% with -%}
+                        {% set filtered_instances = instances|selectattr("subnet_id", "equalto", subnet.id)|list -%}
+                        {% for i in filtered_instances %}
+                        {{- i.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                            <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                                <TR>
+                                    <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_instance.png" /></TD>
+                                </TR>
+                                <TR>
+                                    {{ key_td_b -}} Name {{-key_td_e }}
+                                    {{ value_td_b -}} {{ i|gv_safe_name }} {{- value_td_e }}
+                                </TR>
+                                <TR>
+                                    {{ key_td_b -}} ID {{-key_td_e }}
+                                    {{ value_td_b -}} {{ i.id }} {{- value_td_e }}
+                                </TR>
+                                <TR>
+                                    {{ key_td_b -}} Type {{-key_td_e }}
+                                    {{ value_td_b -}} {{ i.instance_type }} {{- value_td_e }}
+                                </TR>
+                                <TR>
+                                    {{ key_td_b -}} Private IP {{-key_td_e }}
+                                    {{ value_td_b -}} {{ i.private_ip_address }} {{- value_td_e }}
+                                </TR>
+                                <TR>
+                                    {{ key_td_b -}} Public IP {{-key_td_e }}
+                                    {{ value_td_b -}} {{ i.ip_address|default("None Assigned") }} {{- value_td_e }}
+                                </TR>
+                            </TABLE>> ];
+                        {% endfor %}
+                        {% endwith %}
+
+                    }
+{% endblock %}
+
+
+
+
+

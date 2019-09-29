@@ -1,0 +1,42 @@
+{% block aws_subnets %}
+    {% for subnet in subnets %}
+        {% if subnet.availability_zone == az %}
+
+            subnets_az_{{ az|gv_safe_id }} -> sub_{{ subnet.id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+
+            subgraph cluster_az_subnets_{{ subnet.id|gv_safe_id }} {
+
+                node [ {{- style_snippet_node -}} ];
+                label = "Subnet";
+                bgcolor="#FFFFFF"
+                color="#666666"
+                fillcolor="white"
+                style="dotted, filled"
+
+                sub_{{ subnet.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_subnet.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Name {{-key_td_e }}
+                            {{ value_td_b -}} {{ subnet|gv_safe_name }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} ID {{-key_td_e }}
+                            {{ value_td_b -}} {{ subnet.id }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} mapPublicIpOnLaunch {{-key_td_e }}
+                            {{ value_td_b -}} {{ subnet.mapPublicIpOnLaunch }} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+
+                {% include 'aws/aws_ec2_instance.j2' %}
+
+            }
+
+        {% endif %}
+    {% endfor %}
+{% endblock %}
+

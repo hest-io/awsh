@@ -1,0 +1,11 @@
+#cmd: lambda list-functions
+#sort: FunctionName,LastModified
+
+.Functions | .[]? | {
+    FunctionName,
+    Runtime,
+    LastModified,
+    Description
+}
+
+

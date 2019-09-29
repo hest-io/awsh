@@ -1,0 +1,54 @@
+{# variables to act as aliases within template sections #}
+{% set style_snippet_node = 'color="#F58536", style="rounded,filled", fillcolor="white", shape="box", width=4, fontsize=18, fontname=Arial' -%}
+{% set style_snippet_edge = 'color="#CCCCCC", dir=none' -%}
+
+{% set key_td_b = '<TD VALIGN="MIDDLE" ALIGN="LEFT"><FONT COLOR="#F58536">' -%}
+{% set key_td_e = '</FONT></TD>' -%}
+
+{% set value_td_b = '<TD VALIGN="MIDDLE" ALIGN="LEFT" COLSPAN="3">' -%}
+{% set value_td_e = '</TD>' -%}
+
+{% set table_key_td_b = '<TD VALIGN="MIDDLE" BGCOLOR="#F58536" ALIGN="LEFT"><FONT COLOR="white">' -%}
+{% set table_key_td_e = '</FONT></TD>' -%}
+
+{% set table_value_td_b = '<TD VALIGN="MIDDLE" ALIGN="LEFT">' -%}
+{% set table_value_td_e = '</TD>' -%}
+
+{% set image_path = [AWSH_ROOT, 'etc/visual.d/images/aws']|join('/') -%}
+
+digraph AWS {
+
+    ranksep=0.65;
+    nodesep=0.40;
+    labeljust=l;
+
+    edge [ concentrate=true ];
+    node [ {{- style_snippet_node -}} ]
+
+    imagepath="{{ image_path }}"
+
+    splines=ortho;
+    rankdir={{ graph_direction }}
+    overlap=scale;
+
+    bgcolor="#FFFFFF"
+    color="#666666"
+    fillcolor="white"
+    style="dotted, filled"
+
+    root="REGION_{{ region|gv_safe_id  }}";
+
+{% block aws_region %}
+
+    {% include 'aws/aws_region.j2' %}
+
+{% endblock %}
+
+    label="AWS Visualization of VPC: {{ vpc.id }}"
+
+}
+
+
+
+
+{# <IMG SRC="/home/hmooney/workspace/work-eircom/project-aws-boss-stack/Source/boss-bob/doc/docs/images/vpcviz/aws_ec2_vpc.png"/> #}

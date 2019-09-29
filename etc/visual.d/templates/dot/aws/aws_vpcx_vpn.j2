@@ -1,0 +1,77 @@
+
+            subgraph cluster_vpns {
+
+                node [ {{- style_snippet_node -}} ];
+                label = "VPNs";
+                bgcolor="#FFFFFF"
+                color="#666666"
+                fillcolor="white"
+                style="dotted, filled"
+
+                vpc_vpns  [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpn.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">VPC VPNs</TD>
+                        </TR>
+                    </TABLE>> ];
+
+                {% for v in vpns -%}
+                vpc_vpns -> {{ v.id|gv_safe_id }} -> {{ v.customer_gateway_id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+                {{ v.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpn.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Name {{-key_td_e }}
+                            {{ value_td_b -}} {{- v|gv_safe_name -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} ID {{-key_td_e }}
+                            {{ value_td_b -}} {{ v.id }} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+
+                {% endfor -%}
+
+                {% for v in cgws -%}
+                {{ v.id|gv_safe_id }} [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_cgw.png" /></TD>
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Name {{-key_td_e }}
+                            {{ value_td_b -}} {{- v|gv_safe_name -}} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} ID {{-key_td_e }}
+                            {{ value_td_b -}} {{ v.id }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} Type {{-key_td_e }}
+                            {{ value_td_b -}} {{ v.type }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} IP {{-key_td_e }}
+                            {{ value_td_b -}} {{ v.ip_address }} {{- value_td_e }}
+                        </TR>
+                        <TR>
+                            {{ key_td_b -}} BGP ASN {{-key_td_e }}
+                            {{ value_td_b -}} {{ v.bgp_asn }} {{- value_td_e }}
+                        </TR>
+                    </TABLE>> ];
+                {% endfor -%}
+
+            }
+
+            {% with -%}
+            {% set filtered_items = vpngw|map(attribute="id")|gv_safe_id|list -%}
+            {% for v in filtered_items -%}
+            {{ v }} -> vpc_vpns [ {{- style_snippet_edge -}} ];
+            {% endfor -%}
+            {% endwith -%}
+

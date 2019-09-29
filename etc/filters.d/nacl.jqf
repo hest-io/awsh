@@ -1,0 +1,17 @@
+#cmd: ec2 describe-network-acls
+#sort: VpcId,NetworkAclId,RuleNumber
+
+(
+    .NetworkAcls[] | .VpcId as $vpc_id | .NetworkAclId as $nacl_id | .Associations as $nacl_associations | .Tags as $tags | .Entries[]? | {
+        VpcId: $vpc_id,
+        NetworkAclId: $nacl_id,
+        Associations: (([ $nacl_associations[]?.SubnetId ]|join(", ")) // "NA"),
+        RuleNumber,
+        Protocol,
+        Egress,
+        CidrBlock,
+        RuleAction
+    }
+    +
+    (($tags // [])|from_entries)
+)

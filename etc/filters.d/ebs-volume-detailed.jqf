@@ -1,0 +1,10 @@
+#cmd: ec2 describe-volumes
+#sort: AvailabilityZone,VolumeType,State,CreateTime
+
+.Volumes | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)

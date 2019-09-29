@@ -1,0 +1,13 @@
+#cmd: ec2 describe-customer-gateways
+#sort: CustomerGatewayId,Name
+
+.CustomerGateways | .[]? | {
+    CustomerGatewayId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State,
+    Type,
+    IpAddress,
+    BgpAsn
+}
+
+

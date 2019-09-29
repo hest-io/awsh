@@ -1,0 +1,20 @@
+
+            {% for i in igw -%}
+            vpc_connections -> {{ i.id|gv_safe_id }};
+            {% endfor -%}
+
+            subgraph cluster_internet {
+
+                style=filled;
+                color=lightgrey;
+                node [style=filled,color=white];
+                label = "Internet";
+
+                {% for i in igw -%}
+                {{ i.id|gv_safe_id }} [label="{ {{- i|gv_safe_name -}}|{{- i.id -}} }"];
+                {{ i.id|gv_safe_id }} -> WWW;
+                {% endfor -%}
+
+                WWW;
+            }
+

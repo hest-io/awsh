@@ -1,0 +1,10 @@
+#cmd: ec2 describe-route-tables
+#sort: VpcId,Name,RouteTableId
+
+.RouteTables | .[]? | {
+    VpcId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    RouteTableId,
+    PropagatingVgws: (.PropagatingVgws[]?|join(", ")),
+    Associations: [(.Associations?|.[]| (.SubnetId?) // "Main")] | join(", ")
+}

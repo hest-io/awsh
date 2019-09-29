@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+if [ ! -n "$BASH_VERSION" ]; then
+    echo "Use a BASH Shell. You will regret this. Dipshit mode enabled"
+fi
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_SCRIPT_PATH=${0}
+CONST_SCRIPT_CALLER="${BASH_SOURCE[0]}"
+
+# The PROJECT_ROOT is one level up from where the scripts run in the 'bin'
+# directory unless it was loaded from an interactive shell session
+if [ -z $CONST_SCRIPT_CALLER ]; then
+    PROJECT_ROOT=$( cd "$( dirname "${CONST_SCRIPT_PATH}" )/../" && pwd )
+else
+    PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )
+fi
+
+# Defining True and False to improve readability in scripts
+TRUE=0
+FALSE=1
+
+# These logging flasg should be re-set in the main script but are defined here
+# to provide defaults
+# Current logging config
+TTY_OUTPUT_ENABLED=$FALSE
+LOG_OUTPUT_ENABLED=$TRUE
+SYSLOG_OUTPUT_ENABLED=$FALSE
+EVENT_OUTPUT_ENABLED=$FALSE
+export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
+
+# Default timestamp format
+FV_TIMESTAMP_FORMAT='%Y-%m-%d_%H:%M:%S'
+export FV_TIMESTAMP_FORMAT
+
+################################################################################
+# Bo not edit below
+################################################################################
+
+export TRUE FALSE PROJECT_ROOT
+
+# Load the helper scripts
+for helper_script in ${PROJECT_ROOT}/etc/functions.d/* ; do
+    . "$helper_script"
+done
+
+# Update the PATH
+PATH=$PATH:$PROJECT_ROOT/bin
+PATH=$PATH:$PROJECT_ROOT/bin/tools
+export PATH
+
+# Activate the AWS an AWSH CLI completer
+if [ -n "$BASH_VERSION" ]; then
+    complete -C aws_completer aws
+    . $AWSH_ROOT/etc/awsh_bash_completion
+    complete -F _awsh awsh
+fi

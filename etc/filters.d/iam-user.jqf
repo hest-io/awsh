@@ -1,0 +1,11 @@
+#cmd: iam list-users
+#sort: UserName,CreateDate
+#geo: global
+
+.Users | .[] | {
+    UserName,
+    CreateDate,
+    UserId,
+    PasswordLastUsed,
+    Arn
+}

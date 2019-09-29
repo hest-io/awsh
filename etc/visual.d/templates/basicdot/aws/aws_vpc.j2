@@ -1,0 +1,31 @@
+    subgraph cluster_VPC_{{ vpc.id|gv_safe_id }} {
+
+        VPC_{{ vpc.id|gv_safe_id }} [label="{ {{- vpc|gv_safe_name -}}|{{- vpc.id|gv_safe_id -}} }"];
+
+        {% if route_tables|length > 0 %}
+
+        VPC_{{ vpc.id|gv_safe_id }} -> route_tables [color="#666666",dir=none];
+
+        {% block aws_route_tables %}
+
+            {% include 'aws/aws_route_table.j2' %}
+
+        {% endblock %}
+
+        {% endif %}
+
+        {% if instances|length > 0 %}
+        {% block aws_az %}
+
+            {% include 'aws/aws_az.j2' %}
+
+        {% endblock %}
+        {% endif %}
+
+        {% block aws_vpc_connections %}
+
+            {% include 'aws/aws_vpc_connections.j2' %}
+
+        {% endblock %}
+
+    }

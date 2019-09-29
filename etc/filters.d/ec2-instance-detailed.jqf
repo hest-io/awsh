@@ -1,0 +1,25 @@
+#cmd: ec2 describe-instances
+#sort: VpcId,AZ,SubnetId,Name
+
+.Reservations[]["Instances"] | .[] | (
+{
+    VpcId,
+    AZ: (.Placement|.AvailabilityZone),
+    SubnetId,
+    State: (.State|.Name),
+    InstanceId,
+    PrivateIpAddress,
+    InstanceType,
+    Platform: (.Platform // "Unknown"),
+    KeyName,
+    IamInstanceProfile: ((.IamInstanceProfile | .Arn) // "None"),
+    ImageId,
+    Virt: .VirtualizationType,
+    SGs: ([ .SecurityGroups[].GroupId ]|join(",")),
+    PublicIpAddress: (.PublicIpAddress // "None"),
+    Monitoring: (.Monitoring|.State)
+}
++
+((.Tags // [])|from_entries)
+)
+

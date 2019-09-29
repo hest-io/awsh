@@ -1,0 +1,10 @@
+#cmd: ec2 describe-vpcs
+#sort: Name,CidrBlock,VpcId
+
+.Vpcs[] | {
+    VpcId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    CidrBlock,
+    CidrBlockAssociationSet: (([ .CidrBlockAssociationSet[]?.CidrBlock ]|join(", ")) // "NA"),
+    IsDefault
+}

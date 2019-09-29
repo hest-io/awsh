@@ -1,0 +1,386 @@
+#!/usr/bin/env python2
+
+"""
+Simple utility to export as much info as possible about a given VPC so that it
+can be visualized
+
+Usage:
+    awsh-vpc-viz [options]
+    awsh-vpc-viz ( -h | --help )
+
+Options:
+    -v <vpc-id>, --vpc-id=<vpc-id>
+                        Dump resources in the matching only VPC. Defaults to
+                        creating one output per VPC discovered
+    -o <output-dir>, --output=<output-dir>
+                        Directory in which to output any resource created.
+                        Defaults to the current directory [default: .]
+    -f <output-format>, --format=<output-format>
+                        Supported formats are; dot [default: dot]
+    -d <dir>, --dir=<dir>
+                        Graphviz graph direction. Only used for gviz output
+                        Can be one of; BT, TB, RL, LR [default: TB]
+    -x, --extra         Attempt GraphViz package detection and if found create
+                        additional PNG and SVG outputs
+    --no-ec2            Hide EC2 resources
+    --no-routing        Hide VPC Routing resources (RouteTable)
+    --no-cx             Hide private connection resources (DX, VPN, Peering)
+    --debug             Show more verbose logging
+
+Graphviz diagrams can be converted to images if you also have the 'dot'
+packages installed. If the 'dot' command is available from the $PATH then
+automatic conversion will be attempted
+
+  PNG:  dot -Tpng aws-vpc-1234567.dot -o aws-vpc-1234567.png
+  SVG:  dot -Tsvg aws-vpc-1234567.dot -o aws-vpc-1234567.svg
+
+"""
+
+from future.utils import iteritems
+
+import os
+import sys
+import distutils.spawn as sp
+from awshutils.logger import AWSHLog
+from awshutils import check_imports, clean_up
+import docopt
+from jinja2 import Environment, FileSystemLoader
+import boto3
+from boto import ec2, vpc
+from colorama import init as colorama_init
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+LUT_ROUTETABLE_ORIGIN = {
+    'CreateRouteTable': 'Auto',
+    'CreateRoute': 'Manual',
+    'EnableVgwRoutePropagation': 'Dynamic'
+}
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+# Ensure encoding=utf8
+reload(sys)
+sys.setdefaultencoding('utf8')
+
+_log = AWSHLog(__file__)
+check_imports()
+colorama_init()
+
+###############################################################################
+# Classes
+###############################################################################
+
+class IterRegistry(type):
+    """Helper class for iteration through objects's properties"""
+
+    def __iter__(self, cls):
+        return iter(cls._registry)
+
+
+class AWS_VPC:
+    pass
+
+
+class AWS_DX_CONNECTION:
+    pass
+
+
+class AWS_DX_INTERFACE:
+    pass
+
+
+###############################################################################
+# Module Variables
+###############################################################################
+
+_AWS_REGION = os.getenv('AWS_DEFAULT_REGION')
+CONST_DIR_TMP = "/tmp"
+CONST_AWSH_ROOT = os.getenv('AWSH_ROOT', '')
+
+###############################################################################
+# Functions
+###############################################################################
+
+
+def gv_pprint(v):
+    res = []
+    if v and type(v) is list:
+        for k in v:
+            try:
+                res.append("{}\n".format(k))
+            except TypeError as e:
+                pass
+    elif v and type(v) is tuple:
+        for k in dir(v):
+            try:
+                res.append("{} {}\n".format(k, getattr(v, k)))
+            except TypeError as e:
+                pass
+    else:
+        res.append("{}\n".format(v))
+    return '\n// '.join(res)
+
+
+def gv_safe_id(v):
+    if hasattr(v, '__iter__'):
+        return [gv_safe_id(x) for x in v]
+    else:
+        return v.replace("-", "_") if v else "Unknown"
+
+
+def gv_safe_name(v):
+    try:
+        return v.tags['Name']
+    except (KeyError, AttributeError) as e:
+        return "Un-named"
+
+
+def dict_replace(text, replacements):
+    for key, val in replacements.iteritems():
+        text = text.replace(key, val)
+    return text
+
+
+def lut_replace(text, replacements):
+    return replacements[text] if text in replacements.keys() else text
+
+
+def unique_items(seq):
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
+
+
+def _dump_vpcs(vpc_conn=None, ec2_conn=None, dx_conn=None, options=[]):
+    """Generates an output from Jinja2 template describing a collection of
+    resources within or connected to a VPC"""
+
+    _log.debug('Checking if graphviz is installed for later conversions')
+    cmd_dot = sp.find_executable('dot')
+
+    vpc_ids = options['--vpc-id'] if '--vpc-id' in options else None
+
+    _log.debug('Retrieving VPC information for {} region'.format(_AWS_REGION))
+    vpcs = vpc_conn.get_all_vpcs(vpc_ids=vpc_ids)
+    _log.debug('Discovered {0} VPCs'.format(len(vpcs)))
+
+    # Create the jinja2 environment.
+    # Notice the use of trim_blocks, which greatly helps control whitespace.
+    TEMPLATE_DIR = '{}/etc/visual.d/templates/{}'.format(
+        CONST_AWSH_ROOT,
+        options['--format']
+        )
+
+    j2_env = Environment(
+        loader=FileSystemLoader(TEMPLATE_DIR),
+        trim_blocks=True
+        )
+
+    # Add our custom filters
+    j2_env.filters['pprint'] = gv_pprint
+    j2_env.filters['gv_safe_id'] = gv_safe_id
+    j2_env.filters['gv_safe_name'] = gv_safe_name
+    j2_env.filters['dict_replace'] = dict_replace
+    j2_env.filters['lut_replace'] = lut_replace
+
+    for v in vpcs:
+
+        # Jinja setup
+        filename = os.path.abspath('{}/aws-{}.{}'.format(
+            options['--output'],
+            v.id,
+            options['--format']
+            ))
+
+        _log.info('Generating output into {}'.format(filename))
+
+        # Subnets
+        _log.info('Retrieving Subnet information for {}'.format(v.id))
+        subnets = vpc_conn.get_all_subnets(filters={'vpcId': v.id})
+        azs = set([ x.availability_zone for x in subnets ])
+        _log.debug('Discovered {0} objects'.format(len(subnets)))
+
+        instances = security_groups = []
+        if not options['--no-ec2']:
+            # Instances
+            _log.info('Retrieving Instance information for {}'.format(v.id))
+            reservations = ec2_conn.get_all_reservations()
+            instances = [i for r in reservations for i in r.instances if i.vpc_id == v.id]
+            _log.debug('Discovered {0} objects'.format(len(instances)))
+            # Security Groups
+            _log.info('Retrieving Security Group information for {}'.format(v.id))
+            security_groups = ec2_conn.get_all_security_groups()
+            security_groups = [sg for sg in security_groups if sg.vpc_id == v.id]
+            _log.debug('Discovered {0} objects'.format(len(security_groups)))
+
+        route_tables = main_route_tables = main_route_table = []
+        if not options['--no-routing']:
+            # Route Tables
+            _log.info('Retrieving Route Tables for {}'.format(v.id))
+            route_tables = vpc_conn.get_all_route_tables()
+            route_tables = [x for x in route_tables if x.vpc_id == v.id]
+            _log.debug('Discovered {0} objects'.format(len(route_tables)))
+
+            # Main Route Table
+            _log.info('Retrieving Main Route Table for {}'.format(v.id))
+            main_route_tables = vpc_conn.get_all_route_tables(filters = {'vpc-id':v.id, 'association.main':'true'})
+            _log.debug('Discovered {0} objects'.format(len(main_route_tables)))
+            main_route_table = main_route_tables[0]
+            _log.info('Main Route Table detected as {0}'.format(main_route_table.id))
+
+        # Internet Gateways
+        _log.info('Retrieving Internet Gateway for {}'.format(v.id))
+        igw = vpc_conn.get_all_internet_gateways(filters={'attachment.vpc-id': v.id})
+        _log.debug('Discovered {0} objects'.format(len(igw)))
+
+        vpngw = vpns = cgws = dx_interfaces = dx_connections = peering_cx = []
+        if not options['--no-cx']:
+            # Virtual Private Gateways
+            _log.info('Retrieving Virtual Private Gateway for {}'.format(v.id))
+            vpngw = vpc_conn.get_all_vpn_gateways(filters={'attachment.vpc-id': v.id})
+            vpngw_ids = [ x.id for x in vpngw ]
+            _log.debug('Discovered {0} objects'.format(len(vpngw)))
+
+            # VPN Connections
+            _log.info('Retrieving VPN Connections for {}'.format(v.id))
+            vpns = vpc_conn.get_all_vpn_connections()
+            _log.debug('Discovered {0} objects'.format(len(vpns)))
+            _log.debug('Filtering based on current VPC')
+            vpns = [ x for x in vpns if x.vpn_gateway_id in vpngw_ids ]
+            vpn_cgw_ids = [ x.customer_gateway_id for x in vpns ]
+            _log.debug('Discovered {0} objects'.format(len(vpns)))
+
+            # Customer Gateways
+            _log.info('Retrieving Customer Gateways for {}'.format(v.id))
+            cgws = vpc_conn.get_all_customer_gateways()
+            _log.debug('Discovered {0} objects'.format(len(cgws)))
+            _log.debug('Filtering based on current VPC')
+            cgws = [ x for x in cgws if x.id in vpn_cgw_ids ]
+            _log.debug('Discovered {0} objects'.format(len(cgws)))
+
+            # DirectConnect - Interfaces
+            _log.info('Retrieving DX Interfaces for {}'.format(v.id))
+            dx_interfaces = dx_conn.describe_virtual_interfaces()['virtualInterfaces']
+            _log.debug('Filtering based on current VPC')
+
+            dx_interfaces = [ x for x in dx_interfaces if x['virtualGatewayId'] in vpngw_ids ]
+            dx_connection_ids = unique_items([ x['connectionId'] for x in dx_interfaces ])
+            _log.debug('Discovered {0} objects'.format(len(dx_interfaces)))
+
+            # DirectConnect - Connections
+            _log.info('Retrieving DX Connections for {}'.format(v.id))
+            dx_connections = [ dx_conn.describe_connections(connectionId=x)['connections'] for x in dx_connection_ids ]
+            # Flatten list of lists
+            dx_connections = [item for sublist in dx_connections for item in sublist]
+            _log.debug('Discovered {0} objects'.format(len(dx_connections)))
+
+            # Peering
+            _log.info('Retrieving VPC Peering Connections for {}'.format(v.id))
+            peering_cx = vpc_conn.get_all_vpc_peering_connections(filters={'requester-vpc-info.vpc-id': v.id})
+            _log.debug('Discovered {0} objects'.format(len(peering_cx)))
+
+        # Generate the HTML content
+        content = j2_env.get_template('root.j2').render(
+            page_title='AWS VPC Summary for VPC {}'.format(v.id),
+            AWSH_ROOT=CONST_AWSH_ROOT,
+            graph_direction=options['--dir'],
+            region=_AWS_REGION,
+            azs=azs,
+            vpc=v,
+            subnets=subnets,
+            instances=instances,
+            security_groups=security_groups,
+            route_tables=route_tables,
+            lut_routetable_origin=LUT_ROUTETABLE_ORIGIN,
+            main_route_table=main_route_table,
+            igw=igw,
+            vpngw=vpngw,
+            vpns=vpns,
+            cgws=cgws,
+            peering_cx=peering_cx,
+            dx_interfaces=dx_interfaces,
+            dx_connections=dx_connections
+        )
+
+        with open(filename, 'w+') as f:
+            f.write(content)
+            f.close()
+
+        _log.debug('Extra outputs checking: format: {} extra:{} cmd:{}'.format(
+            options['--format'],
+            options['--extra'],
+            cmd_dot)
+            )
+
+        if options['--format'] == 'dot' and options['--extra'] and cmd_dot is not None:
+
+            _log.info('Graphviz install detected. Converting DOT to PNG and SVG')
+
+            from subprocess import check_call, CalledProcessError
+            try:
+
+                png_filename = os.path.abspath('{}/aws-{}.png'.format(
+                    options['--output'],
+                    v.id
+                    ))
+                check_call([cmd_dot, '-Tpng', filename, '-o', png_filename])
+                _log.info('Created {}'.format(png_filename))
+
+                svg_filename = os.path.abspath('{}/aws-{}.svg'.format(
+                    options['--output'],
+                    v.id
+                    ))
+                check_call([cmd_dot, '-Tsvg', filename, '-o', svg_filename])
+                _log.info('Created {}'.format(svg_filename))
+
+            except CalledProcessError as e:
+                _log.eror('Error attempting to convert DOT to image formats')
+
+
+def main(options):
+    """
+    The main program function
+    """
+
+    if options['--debug'] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug('command-line options: {}: {}'.format(key, value))
+
+    try:
+
+        _log.debug('Initializing AWS connections')
+        vpc_conn = vpc.connect_to_region(_AWS_REGION)
+        ec2_conn = ec2.connect_to_region(_AWS_REGION)
+        dx_conn = boto3.client('directconnect')
+
+        _dump_vpcs(
+            vpc_conn=vpc_conn,
+            ec2_conn=ec2_conn,
+            dx_conn=dx_conn,
+            options=options
+            )
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+if __name__ == "__main__":
+
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    # Handle invalid options
+    except docopt.DocoptExit as e:
+        print(e.message)

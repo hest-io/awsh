@@ -1,0 +1,10 @@
+#cmd: rds describe-option-groups
+#sort: EngineName,MajorEngineVersion,OptionGroupName
+
+.OptionGroupsList | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)

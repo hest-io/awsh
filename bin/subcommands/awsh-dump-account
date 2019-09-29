@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+#
+# Simple credentials report
+#
+
+##############################################################################
+# Shell Behaviour
+##############################################################################
+
+# Check for unbound variables being used
+# set -o nounset
+
+# Exit is a bad command is attempted. If you're going to handle errors then
+# leave this disabled
+# set -o errexit
+
+# Exit if any of the commands in a pipeline exit with a non-zero exit code
+# set -o pipefail
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_COMMAND_LINE="$@"
+CONST_OS_VERSION=$(uname -r)
+CONST_SYSTEM_TYPE=$(uname -m)
+CONST_SCRIPT_NAME=${0##*/}
+
+# The PROJECT_ROOT is TWO level up from where the scripts run in the
+# 'bin/subcommands' directory
+PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+
+# Load the Frameverk
+. ${PROJECT_ROOT}/etc/awshrc
+
+# Current logging config
+TTY_OUTPUT_ENABLED=$TRUE
+LOG_OUTPUT_ENABLED=$TRUE
+SYSLOG_OUTPUT_ENABLED=$FALSE
+EVENT_OUTPUT_ENABLED=$TRUE
+export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
+
+# Default log file
+DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+# Define somewhere for specific log messages to go
+EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+export DEFAULT_OUT EVENT_LOG
+
+# Trap  abnormal termination
+trap cleanup 1 2 3 15
+
+
+##############################################################################
+# Functions
+##############################################################################
+
+show_usage() {
+    cat <<EOF
+usage: $CONST_SCRIPT_NAME [--help] [-d <DIR>]
+
+Attempts to dump all of the AWS account in Terraform format to the specified
+directory (defaults to current working directory). A sub-directory is created
+for each available AWS region.
+
+It is normal for errors to be generated during a run if a specific resource
+is not supported in that region or if permissions for specific resources are
+unavailable to the API user performing the dump
+
+This wrapper script relies on the Terraforming tool available from
+https://github.com/dtan4/terraforming and will not function without it.
+
+EOF
+}
+
+
+cleanup() {
+    echo "Exiting."
+    exit 1
+}
+
+
+dump_global_to_path() {
+
+    local dump_path=$1
+    local resources=
+
+    resources=$(terraforming | grep terraforming | awk '{print $2}' | grep -v help | grep -P '^iam|^r53')
+
+    [ -d "${dump_path}" ] || mkdir -p "${dump_path}"
+
+    _log "$LINENO" "Generate an initial tfstate"
+    cd "${dump_path}" && terraforming asg --tfstate > terraform.tfstate
+
+    _log "$LINENO" "Dumping the state for each global resource type"
+    for res in $resources; do
+        _log "$LINENO" "Dumping ${res}"
+        cd "${dump_path}" && terraforming $res --tfstate --merge=terraform.tfstate --overwrite
+        cd "${dump_path}" && terraforming $res > "aws-${res}.tf"
+    done
+
+}
+
+
+dump_regional_to_path() {
+
+    local aws_region=$1
+    local dump_path=$2
+    local resources=
+
+    resources=$(terraforming | grep terraforming | awk '{print $2}' | grep -v help | grep -v -P '^iam|^r53')
+
+    [ -d "${dump_path}" ] || mkdir -p "${dump_path}"
+
+    _log "$LINENO" "Generate an initial tfstate for ${current_region}"
+    cd "${dump_path}" && AWS_DEFAULT_REGION=${aws_region} terraforming asg --tfstate > terraform.tfstate
+
+    _log "$LINENO" "Dumping the state for each resource type available in ${current_region}"
+    for res in $resources; do
+        _log "$LINENO" "Dumping ${res}"
+        cd "${dump_path}" && AWS_DEFAULT_REGION=${aws_region} terraforming $res --tfstate --merge=terraform.tfstate --overwrite
+        cd "${dump_path}" && AWS_DEFAULT_REGION=${aws_region} terraforming $res > "aws-${res}.tf"
+    done
+
+}
+
+
+# show help for no arguments if stdin is a terminal
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
+    show_usage
+    exit 0
+fi
+
+# As there's only 1 option it's value will be in $2
+output_dir="${2:-$(pwd)}"
+
+
+##############################################################################
+# Main Script
+##############################################################################
+
+_log "$LINENO" "Checking for terraforming support"
+which terraforming > /dev/null 2> /dev/null
+if [ $? -ne 0 ]; then
+    _log "$LINENO" "No terraforming support"
+    cleanup
+fi
+
+_log "$LINENO" "Ensuring target path exists"
+[ -d "${output_dir}" ] || mkdir -p "${output_dir}"
+
+aws_region_list="$(aws ec2 describe-regions | jq -r '.[] | .[] | .RegionName')"
+
+# Dipshit detection
+if [ -f "${output_dir}/terraform.tfstate" ]; then
+    _log "$LINENO" "Existing terraform.tfstate file found! Please remove it"
+    cleanup
+fi
+
+dump_global_to_path "${output_dir}/global"
+
+pids=""
+for current_region in ${aws_region_list}; do
+    _log "$LINENO" "Spawning background process regional resources for ${current_region}"
+    dump_regional_to_path "${current_region}" "${output_dir}/${current_region}" &
+    pids="$pids $!"
+done
+
+_log "$LINENO" "Waiting on background processes (${pids}) to complete"
+wait ${pids}
+
+_log "$LINENO" "Done"
+

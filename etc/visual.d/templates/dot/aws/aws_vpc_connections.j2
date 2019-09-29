@@ -1,0 +1,41 @@
+
+        VPC_{{ vpc.id|gv_safe_id }} -> vpc_connections [ {{- style_snippet_edge -}} ];
+
+        vpc_connections [ {{- style_snippet_node -}}, label=
+                    <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+                        <TR>
+                            <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_ec2_vpc_cx.png" /></TD>
+                        </TR>
+                        <TR>
+                            <TD COLSPAN="4">VPC Connections</TD>
+                        </TR>
+                    </TABLE>> ];
+
+        subgraph cluster_connections {
+
+            node [ {{- style_snippet_node -}} ];
+            label = "Private Connections";
+            bgcolor="#FFFFFF"
+            color="#666666"
+            fillcolor="white"
+            style="dotted, filled"
+
+            {% if vpngw %}
+                {% block aws_vpcx_vgw %}
+                    {% include 'aws/aws_vpcx_vgw.j2' %}
+                {% endblock %}
+            {% endif %}
+
+            {% if peering_cx %}
+                {% block aws_vpcx_peering %}
+                    {% include 'aws/aws_vpcx_peering.j2' %}
+                {% endblock %}
+            {% endif %}
+
+            {% if igw %}
+                {% block aws_vpcx_internet %}
+                    {% include 'aws/aws_vpcx_internet.j2' %}
+                {% endblock %}
+            {% endif %}
+
+        }

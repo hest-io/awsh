@@ -1,0 +1,11 @@
+#cmd: ec2 describe-subnets
+#sort: VpcId,AvailabilityZone,CidrBlock,Name
+
+.Subnets[] | {
+    VpcId,
+    AvailabilityZone,
+    CidrBlock,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    SubnetId,
+    AvailableIpAddressCount
+}

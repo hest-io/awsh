@@ -1,0 +1,175 @@
+#!/usr/bin/env python2
+
+"""
+Basic script to add the specified SG to an instance if the matching SG is
+found currently associated
+
+Usage:
+    awsh-sg-add -g <sg-id> [options]
+    awsh-sg-add ( -h | --help )
+
+Options:
+    -s <sg-filter>, --sg-filter=<sg-id>
+                         Only action on instances that already have this SG
+                         associated with them
+    -t <tag-filter>, --tag-filter=<tag-name>
+                         Only action on instances that already have this Tag
+                         key-pair associated with them. Use a format of
+                         "KeyName|KeyValue" and remember the data is
+                         case-sensitive
+    -v <vpc-filter>, --vpc-filter=<vpc-id>
+                         Only action on instances that are contained within the
+                         specified VPC
+    -g <sg-id>, --sg-id=sg-id
+                         The new SecurityGroup ID to add to the instance
+    -y, --yes            Required to actually do anything. Otherwise it just
+                         lists what would have been affected [default: False]
+    -h, --help           Show this help message and exit
+    --debug              Show more verbose logging
+
+"""
+from future.utils import iteritems
+
+import os
+import awshutils
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+import docopt
+from tabulate import tabulate
+from operator import itemgetter
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+_log = AWSHLog(__file__)
+check_imports()
+
+from boto import ec2
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+###############################################################################
+# Functions
+###############################################################################
+
+
+def main(options):
+    """
+    The main program function
+    """
+
+    if options['--debug'] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug('command-line options: {}: {}'.format(key, value))
+
+    try:
+
+        aws_region = os.getenv('AWS_DEFAULT_REGION')
+        ec2_conn = ec2.connect_to_region(aws_region)
+        reservations = ec2_conn.get_all_reservations()
+
+        # First build a list of all potential instances and from that build a
+        # sub-set of instances to action by applying the filters from command
+        # line args
+
+        all_instances = [ r.instances[0] for r in reservations ]
+        _log.info('Discovered {} EC2 instances'.format(len(all_instances)))
+
+        # Now filter the list as many more times as needed, based on the
+        # command-line options
+
+        next_filter = options['--vpc-filter']
+        if next_filter is not None:
+            _log.info('Applying filter by searching for matching VPC {} association'.format(next_filter))
+            all_instances = [ i for i in all_instances if i.vpc_id == next_filter]
+            _log.info('After filtering by VPC we now have {} instances'.format(len(all_instances)))
+
+        next_filter = options['--sg-filter']
+        if next_filter is not None:
+            _log.info('Applying filter by searching for matching SG {} association'.format(next_filter))
+            all_instances = [ i for i in all_instances if next_filter in [g.id for g in i.groups] ]
+            _log.info('After filtering by SG we now have {} instances'.format(len(all_instances)))
+
+        next_filter = options['--tag-filter']
+        if next_filter is not None:
+            parts = next_filter.split('|')
+            tag_name = parts[0]
+            # Handle the edge case where our separator is actually present in the tag value
+            tag_value = '|'.join(parts[1:])
+            _log.info('Applying filter by searching for Tag name [{}] with value [{}]'.format(tag_name, tag_value))
+            all_instances = [ i for i in all_instances if ( tag_name in i.tags.keys() and tag_value == i.tags[tag_name] ) ]
+            _log.info('After filtering by Tags we now have {} instances'.format(len(all_instances)))
+
+        # Filter the list by removing any instances that don't need to be actioned
+        # because they already have the SG associated
+        next_filter = options['--sg-id']
+        if next_filter is not None:
+            _log.info('Applying filter by searching matching SG {} association already existing'.format(next_filter))
+            all_instances = [ i for i in all_instances if next_filter not in [g.id for g in i.groups] ]
+            _log.info('After filtering by existing SG we now have {} instances'.format(len(all_instances)))
+
+
+        # What remains is a list of instances to action
+        modified_count = 0
+        for i in all_instances:
+
+            if len(i.interfaces) > 1:
+
+                _log.info('Instance {} has multiple ENIs. Looping through interfaces instead'.format(i.id))
+                for eni in i.interfaces:
+                    eni_sgids = [ g.id for g in eni.groups ]
+                    eni_sgids.append(options['--sg-id'])
+
+                    if options['--yes'] is True:
+                        ec2_conn.modify_network_interface_attribute(eni.id, 'groupSet', eni_sgids, dry_run=False)
+                        modified_count += 1
+                    else:
+                        _log.warning('Dry-run mode active not making any change this run')
+
+            else:
+
+                eni_sgids = [ g.id for g in i.groups ]
+                eni_sgids.append(options['--sg-id'])
+                _log.info('Instance {} being modified. New SG list will be {}'.format(i.id, eni_sgids))
+
+                if options['--yes'] is True:
+                    i.modify_attribute('groupSet', eni_sgids, dry_run=False)
+                    modified_count += 1
+                else:
+                    _log.warning('Dry-run mode active not making any change this run')
+
+        _log.info('Done. {} instances modified'.format(modified_count))
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+if __name__ == "__main__":
+
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    # Handle invalid options
+    except docopt.DocoptExit as e:
+        print(e.message)

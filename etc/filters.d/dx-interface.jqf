@@ -1,0 +1,14 @@
+#cmd: directconnect describe-virtual-interfaces
+#sort: ownerAccount,location,virtualInterfaceName,
+
+.virtualInterfaces[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)
+| del (.authKey)
+| del (.customerRouterConfig)
+| del (.directConnectGatewayId)
+

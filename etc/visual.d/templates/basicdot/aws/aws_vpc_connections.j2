@@ -1,0 +1,28 @@
+
+        VPC_{{ vpc.id|gv_safe_id }} -> vpc_connections [color="#666666",dir=none];
+
+        subgraph cluster_connections {
+
+            color=white;
+            node [style=filled];
+            label = "Private Connections";
+
+            {% if vpngw %}
+                {% block aws_vpcx_vgw %}
+                    {% include 'aws/aws_vpcx_vgw.j2' %}
+                {% endblock %}
+            {% endif %}
+
+            {% if peering_cx %}
+                {% block aws_vpcx_peering %}
+                    {% include 'aws/aws_vpcx_peering.j2' %}
+                {% endblock %}
+            {% endif %}
+
+            {% if igw %}
+                {% block aws_vpcx_internet %}
+                    {% include 'aws/aws_vpcx_internet.j2' %}
+                {% endblock %}
+            {% endif %}
+
+        }

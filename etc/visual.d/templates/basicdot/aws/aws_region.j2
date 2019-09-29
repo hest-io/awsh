@@ -1,0 +1,17 @@
+
+subgraph cluster_REGION {
+
+    style=filled;
+    color=lightgrey;
+    node [style=filled,color=white];
+    label = "Region";
+
+    REGION_{{ region|gv_safe_id }} -> VPC_{{ vpc.id|gv_safe_id }};
+
+{% block aws_vpc %}
+
+    {% include 'aws/aws_vpc.j2' %}
+
+{% endblock %}
+
+}

@@ -1,0 +1,10 @@
+#cmd: ec2 describe-security-groups
+#sort: VpcId,GroupName,Name
+
+.SecurityGroups[] | {
+    VpcId,
+    GroupName,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    GroupId,
+    Description
+}

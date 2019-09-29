@@ -1,0 +1,9 @@
+#cmd: ec2 describe-internet-gateways
+#sort: InternetGatewayId,Name
+
+.InternetGateways | .[]? | {
+    InternetGatewayId,
+    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+    State: ((.Attachments|.[0]|.State) // "Unknown"),
+    Attachment: ((.Attachments|.[0]|.VpcId) // "None")
+}

@@ -1,0 +1,44 @@
+{% block ec2_instance %}
+
+    subgraph cluster_subnet_instances_{{ subnet.id|gv_safe_id }} {
+                    color=white;
+                    node [style=filled];
+                    label = "";
+
+                    sub_{{ subnet.id|gv_safe_id }};
+
+                    subgraph cluster_instances_group_{{ subnet.id|gv_safe_id }} {
+
+                        color=lightgrey;
+                        node [style=filled];
+                        label = "Instances";
+
+                        {% with -%}
+                        {% set filtered_instance_ids = instances|selectattr("subnet_id", "equalto", subnet.id)|map(attribute="id")|gv_safe_id|list -%}
+                        {% for grp in filtered_instance_ids|batch(6) %}
+                        sub_{{ subnet.id|gv_safe_id }} -> {{ grp|join(" -> ") }}
+                        {% endfor %}
+                        {%- if filtered_instance_ids %};{% endif %}
+                        {% endwith %}
+
+                        {% with -%}
+                        {% set filtered_instances = instances|selectattr("subnet_id", "equalto", subnet.id)|list -%}
+                        {% for i in filtered_instances %}
+                        {{- i.id|gv_safe_id }} [label="{
+                            {{- i|gv_safe_name -}}
+                            | {{- i.id -}}
+                            | {{- i.instance_type -}}
+                            | {{- i.private_ip_address -}}
+                            | {{- i.ip_address|default("None Assigned") -}}
+                            }"];
+                        {% endfor %}
+                        {% endwith %}
+
+                    }
+                }
+{% endblock %}
+
+
+
+
+

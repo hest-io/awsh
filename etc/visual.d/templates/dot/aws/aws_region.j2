@@ -1,0 +1,26 @@
+
+subgraph cluster_REGION {
+
+    node [ {{- style_snippet_node -}} ];
+    label = "Region";
+
+    REGION_{{ region|gv_safe_id }} [ {{- style_snippet_node -}},label=
+        <<TABLE CELLPADDING="5" CELLSPACING="1" BORDER="0">
+            <TR>
+                <TD COLSPAN="4"><IMG SRC="{{ image_path }}/aws_region.png" /></TD>
+            </TR>
+            <TR>
+                {{ key_td_b -}} ID {{- key_td_e }}
+                {{ value_td_b -}} {{ region }} {{- value_td_e }}
+            </TR>
+        </TABLE>> ];
+
+    REGION_{{ region|gv_safe_id }} -> VPC_{{ vpc.id|gv_safe_id }} [ {{- style_snippet_edge -}} ];
+
+{% block aws_vpc %}
+
+    {% include 'aws/aws_vpc.j2' %}
+
+{% endblock %}
+
+}

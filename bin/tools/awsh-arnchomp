@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#
+# reduces ARNs to only their 'resource' token to avoid display ridiculous
+# amounts of tripe in the output of AWSH 'list' sub-command
+
+sed -E -e "s/arn:(.*):(.*):(.*):(.*):(.*)/\5/g"
