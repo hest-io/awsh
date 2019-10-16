@@ -19,10 +19,20 @@ This should make it easier for you to use the latest version and make it easier 
 
 ## Get and use AWSH
 
-- From your command line pull the latest AWSH image
+### Basic Usage
+
+- From your command line pull and run the latest AWSH image
 
     ```console
-    $ docker pull hestio/awsh
+    $ docker run -it hestio/awsh
+    ```
+
+### Use AWSH with persistent identities
+
+- Create a path to store your AWSH identities
+
+    ```console
+    $ mkdir -p ${HOME}/.awsh
     ```
 
 - Run the AWSH container, passing in your AWSH identities
@@ -35,6 +45,14 @@ This should make it easier for you to use the latest version and make it easier 
         -v ${HOME}:/workspace \
         -v /tmp:/tmp \        
         hestio/awsh
+    ```
+
+### Use AWSH with persistent identities, workspace, proxy config and AD/Kerberos credentials
+
+- Create a path to store your AWSH identities
+
+    ```console
+    $ mkdir -p ${HOME}/.awsh
     ```
 
 - Run the AWSH container, passing in your AWSH identities and your Kerberos setup and your proxy environment
