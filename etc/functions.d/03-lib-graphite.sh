@@ -6,7 +6,7 @@
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
 _graphite_send_raw() {
 
-    _ensure_is_bash
+    _system_ensure_is_bash
 
     local current_timestamp="$(date +%s)"
     local metric_timestamp="${3:-$current_timestamp}"
@@ -43,7 +43,7 @@ _graphite_send_raw() {
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
 _graphite_pipe_raw() {
 
-    _ensure_is_bash
+    _system_ensure_is_bash
 
     local host="${GRAPHITE_HOST:-127.0.0.1}"
     local port="${GRAPHITE_PORT:-2003}"

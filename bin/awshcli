@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Simple SecurityGroup report
+# This is the parent CLI script for executing all subcommands available in
+# the $AWSH_ROOT/bin/subcommands dir
 #
 
 ##############################################################################
@@ -26,12 +27,12 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# The AWSH_ROOT is one level up from where the scripts run in the 'bin'
+# directory
+AWSH_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../" && pwd )
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,31 +42,16 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
-# Trap  abnormal termination
-trap cleanup 1 2 3 15
-
-FILTER_ROOT="${PROJECT_ROOT}/etc/filters.d"
-AWSCLI_CMD=aws
-AWSCLI_DEFAULT_ARGS="--output=json"
-
+# Trap abnormal termination
+trap _system_cleanup 1 2 3 15
 
 ##############################################################################
 # Functions
 ##############################################################################
 
-cleanup() {
-    echo "Exiting."
-    exit 1
-}
-
-
-##############################################################################
-# Main Script
-##############################################################################
-
-.login
+awsh "${@}"

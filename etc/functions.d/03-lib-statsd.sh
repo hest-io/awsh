@@ -6,7 +6,7 @@
 # Optionally set STATSD_HOST and STATSD_PORT variables
 _statsd_send_raw() {
 
-    _ensure_is_bash
+    _system_ensure_is_bash
 
     local host="${STATSD_HOST:-127.0.0.1}"
     local port="${STATSD_PORT:-8125}"

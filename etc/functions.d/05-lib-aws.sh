@@ -12,17 +12,12 @@
 # Default MFA token duration in seconds
 DEFAULT_TOKEN_DURATION=3600
 
-_chomp() {
-    local s="$(echo "${@}" | sed -e 's/^ *//g;s/ *$//g')"
-    echo "${s}"
-}
-
 
 # Helper function to load simple API keys
-_load_basic_credentials() {
+_aws_load_basic_credentials() {
 
     # Load the INI config and make it available for use
-    _ini_cfg_parser "${1}"
+    _config_ini_parser "${1}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -34,7 +29,7 @@ _load_basic_credentials() {
 }
 
 
-_load_credentials_from_json() {
+_aws_load_credentials_from_json() {
 
     AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
 
@@ -47,7 +42,7 @@ _load_credentials_from_json() {
         }' "${1}" \
         | awsh-json2properties > "${AWS_CONFIG_FILE}"
 
-    . "${AWS_CONFIG_FILE}"
+    source "${AWS_CONFIG_FILE}"
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_EXPIRY}")
@@ -61,10 +56,10 @@ _load_credentials_from_json() {
 
 
 # Helper function to get API keys using MFA token
-_load_mfaauth_credentials() {
+_aws_load_mfaauth_credentials() {
 
     # Load the INI config and make it available for use
-    _ini_cfg_parser "${1}"
+    _config_ini_parser "${1}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -78,7 +73,7 @@ _load_mfaauth_credentials() {
     echo -e -n "INFO : ${__fg_red}MFA Account Detected... ${__no_color}"
     read -p "Please specify the MFA PIN Now: " response
     echo -e "INFO : ${__fg_red}Requesting Token for... ${REQUESTED_TOKEN_DURATION}s ${__no_color}"
-    ${PROJECT_ROOT}/bin/subcommands/awsh-token-mfaauth-create \
+    ${AWSH_ROOT}/bin/subcommands/awsh-token-mfaauth-create \
         "$aws_access_key_id" \
         "$aws_secret_access_key" \
         "$AWS_MFA_ID" \
@@ -107,10 +102,10 @@ _load_mfaauth_credentials() {
 
 # Helper function to get API keys using ADFS based SAML2 authentication to AWS
 # after IDP form based login
-_load_krb5formauth_credentials() {
+_aws_load_krb5formauth_credentials() {
 
     # Load the INI config and make it available for use
-    _ini_cfg_parser "${1}"
+    _config_ini_parser "${1}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -127,7 +122,7 @@ _load_krb5formauth_credentials() {
 
     echo -e "INFO : ${__fg_red}Kerberos IDP Account Detected... ${__no_color}"
     echo -e "INFO : ${__fg_red}Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s ${__no_color}"
-    ${PROJECT_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
+    ${AWSH_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
         "${region}" \
         "${aws_idp_url}" \
         "${identity_path}/idp_params.json" \
@@ -154,7 +149,7 @@ _load_krb5formauth_credentials() {
 }
 
 
-.login() {
+_aws_login() {
 
     local aws_id_name="$1"
 
@@ -184,8 +179,8 @@ _load_krb5formauth_credentials() {
     if [ -z $aws_id_name ]; then
 
         # Create a list of identities as well as a corresponding list of identity names
-        local personal_id_names="$(find -L ~/.awsh/identities/* -maxdepth 1 -type d -print 2> /dev/null | _xargs basename)"
-        local project_id_names="$(find -L ~/.cloudbuilder/identities/* -maxdepth 1 -type d -print 2> /dev/null | _xargs basename)"
+        local personal_id_names="$(find -L ~/.awsh/identities/* -maxdepth 1 -type d -print 2> /dev/null | _system_xargs basename)"
+        local project_id_names="$(find -L ~/.cloudbuilder/identities/* -maxdepth 1 -type d -print 2> /dev/null | _system_xargs basename)"
         local vs_id_names="${personal_id_names} ${project_id_names}"
         local vs_ids="$(find -L ~/.awsh/identities/* -maxdepth 1 -type d -print 2> /dev/null) $(find ~/.cloudbuilder/identities/* -maxdepth 1 -type d -print 2> /dev/null)"
         local options=( $vs_id_names )
@@ -197,7 +192,7 @@ _load_krb5formauth_credentials() {
             return 1
         fi
 
-        _print_head_l1 "Available Identities"
+        _screen_print_header_l1 "Available Identities"
 
         profile_idx=1
         local VS_BADGES=()
@@ -224,7 +219,7 @@ _load_krb5formauth_credentials() {
         local identity_path="${real_paths[idx]}"
         local identity="$(basename $identity_path)"
 
-        identity_path="$(_chomp "$identity_path")"
+        identity_path="$(_string_chomp "$identity_path")"
 
     else
 
@@ -243,13 +238,13 @@ _load_krb5formauth_credentials() {
 
     if grep -q "aws_mfa" "$AWS_CONFIG_FILE"; then
         # Check if we have MFA to process
-        _load_mfaauth_credentials "${AWS_CONFIG_FILE}"
+        _aws_load_mfaauth_credentials "${AWS_CONFIG_FILE}"
     elif grep -q "aws_idp" "$AWS_CONFIG_FILE"; then
         # Check if we have IDP to process
-        _load_krb5formauth_credentials "${AWS_CONFIG_FILE}"
+        _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}"
     else
         # If we haven't matched one of the earlier patterns
-        _load_basic_credentials "${AWS_CONFIG_FILE}"
+        _aws_load_basic_credentials "${AWS_CONFIG_FILE}"
     fi
 
     # Check to determine if we have a valid set of credentials for use
@@ -272,7 +267,7 @@ _load_krb5formauth_credentials() {
 }
 
 
-.region () {
+_aws_region() {
     local new_aws_region="$1"
     if [ -z $new_aws_region ]; then
         echo ""
@@ -280,22 +275,48 @@ _load_krb5formauth_credentials() {
         region_list="$(aws ec2 describe-regions --output=text | awk '{printf "%s ", $3}')"
         echo "${region_list}" | fold -w 80 -s | column -t
         echo ""
-        echo "Switch region with '.region <name>'"
+        echo "Switch region with 'awsh region <name>'"
     else
         AWS_DEFAULT_REGION="${new_aws_region}"
         export AWS_DEFAULT_REGION
-        echo -e "INFO : ${__fg_yellow}AWS_DEFAULT_REGION.....${__no_color} $AWS_DEFAULT_REGION"
+        
+        _screen_info "AWS_DEFAULT_REGION now ${AWS_DEFAULT_REGION}"
     fi
 }
 
 
-# AWS Tool helpers
-alias aws-session-save="env | grep '^AWS' | xargs -i echo \"export {}\" | sed -e 's/=/=\"/' | sed -e 's/$/\"/' > /tmp/aws-session-credentials"
-alias aws-session-load=". /tmp/aws-session-credentials"
-alias aws-session-purge="env | grep '^AWS' | awk -F'=' '{print \$1}' | xargs -i echo 'unset {}' > /tmp/aws-session-purge; . /tmp/aws-session-purge"
+_aws_logout() {
+    env \
+        | grep '^AWS_' \
+        | awk -F'=' '{print $1}' \
+        | xargs -i echo 'unset {}' > /tmp/aws-session-purge
+    source /tmp/aws-session-purge
+}
 
-alias .save="env | grep '^AWS' | xargs -i echo \"export {}\" | sed -e 's/=/=\"/' | sed -e 's/$/\"/' > /tmp/aws-session-credentials"
-alias .load=". /tmp/aws-session-credentials"
 
-alias .logout="env | grep '^AWS' | awk -F'=' '{print \$1}' | xargs -i echo 'unset {}' > /tmp/aws-session-purge; . /tmp/aws-session-purge"
+_aws_session_save() {
+    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'    
+    env \
+        | grep '^AWS_' \
+        | xargs -i echo "export {}" \
+        | sed -e 's/=/=\"/' \
+        | sed -e 's/$/\"/' > "${CREDENTIALS_CACHE}"
+}
 
+
+_aws_session_load() {
+    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'        
+    if [[ -f "${CREDENTIALS_CACHE}" ]]; then
+        source "${CREDENTIALS_CACHE}"
+    else
+        _    
+    fi    
+}
+
+
+# Export our helper functions
+export -f _aws_login
+export -f _aws_logout
+export -f _aws_region
+export -f _aws_session_save
+export -f _aws_session_load

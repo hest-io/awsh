@@ -12,13 +12,13 @@ _log() {
     log_tty_msg=$(printf "[%s]: %03d : INFO  %s" "$timestamp" "$p_line_number" "$p_message")
 
     # Output to TTY if enabled
-    [ $TTY_OUTPUT_ENABLED -eq $TRUE ] && echo -e "${log_tty_msg}" >&2
+    [[ $TTY_OUTPUT_ENABLED -eq $TRUE ]] && echo -e "${log_tty_msg}" >&2
     # Output to the DEFAULT_OUT file if enabled
-    [ $LOG_OUTPUT_ENABLED -eq $TRUE ] && echo -e "${log_file_msg}" >> "$DEFAULT_OUT"
+    [[ $LOG_OUTPUT_ENABLED -eq $TRUE ]] && echo -e "${log_file_msg}" >> "$DEFAULT_OUT"
     # Output to the syslog if the logger command is found
     _dummy=$(which logger > /dev/null 2>&1)
     has_syslogger=$?
-    [ $SYSLOG_OUTPUT_ENABLED -eq $TRUE ] && [ "$has_syslogger" -eq $TRUE ] && logger -t "$CONST_SCRIPT_NAME[$$]" -p user.info "${log_tty_msg}"
+    [[ $SYSLOG_OUTPUT_ENABLED -eq $TRUE ]] && [[ "$has_syslogger" -eq $TRUE ]] && logger -t "$CONST_SCRIPT_NAME[$$]" -p user.info "${log_tty_msg}"
 
 }
 
@@ -52,6 +52,7 @@ _log_event() {
 
 # A helper function that can be used to print timestamps to strings printed to
 # output streams aimed at mimicing the 'ts' utility if it's not present
-_ts() {
+_log_ts() {
     cat | while IFS= read -r line; do printf '%s %s %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$line" "$(echo -e ${__no_color})"; done
 }
+

@@ -2,9 +2,9 @@
 # from http://theoldschooldevops.com/2008/02/09/bash-ini-parser/ with some
 # updates to help with section capture
 
-# Use as _ini_cfg_parser "${PROJECT_ROOT}/test/sample.ini". Once loaded the
+# Use as _config_ini_parser "${AWSH_ROOT}/test/sample.ini". Once loaded the
 # section names are available from the $_ini_cfg_sections variable
-_ini_cfg_parser () {
+_config_ini_parser () {
     fixed_file=$(cat "$1" | grep -v -e "^$" -e"^ *#" -e "^#" | sed -r -e 's/(\S*)(\s*)=(\s*)(.*)/\1=\4/g' ) # fix spaces either side of the '='
     IFS=$'\n' && ini=( $fixed_file )         # convert to line-array
     ini=( ${ini[*]//;*/} )                   # remove ';' comments

@@ -6,7 +6,7 @@ info_source="$1"
 filter="$2"
 
 # Load the Frameverk
-. ${AWSH_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Tidy the filter so that it can be used with grep
 grep_filter="$(echo "${filter}" \
