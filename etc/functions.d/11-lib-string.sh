@@ -1,6 +1,6 @@
 # Reproduces the behaviour of the Python aray.join() function. Copied from the
 # awesome example on https://stackoverflow.com/a/17841619
-_string_join() {
+function _string_join {
     local IFS="$1";
     shift;
     echo "$*";
@@ -8,7 +8,7 @@ _string_join() {
 
 
 # Reproduces the behaviour of the chomp command/utility
-_string_chomp() {
+function _string_chomp {
     local s="$(echo "${@}" | sed -e 's/^ *//g;s/ *$//g')"
     echo "${s}"
 }

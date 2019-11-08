@@ -1,6 +1,6 @@
 # An alias for xargs to ensure that the expected behaviour in scripts is as
 # intended for those on OS X
-_system_xargs() {
+function _system_xargs {
     if [ "$(uname)" == "Darwin" ]; then
        xargs -L 1 $@
     else
@@ -10,7 +10,7 @@ _system_xargs() {
 
 
 # Dummy function for cleanup
-_system_cleanup() {
+function _system_cleanup {
     local p_exit_code="$1"
     : "${p_exit_code:=1}"
     echo 'ERROR: Interrupted! Please check your app/script'
@@ -19,7 +19,7 @@ _system_cleanup() {
 
 
 # This ain't Burger King.
-_system_ensure_is_bash() {
+function _system_ensure_is_bash {
 
     if [[ -z "$BASH_VERSION" ]]; then
         echo ''
@@ -42,7 +42,7 @@ _system_ensure_is_bash() {
 #       do_something "arg1" "arg2" &
 #   done
 #
-_system_job_queue() {
+function _system_job_queue {
 
     local p_max_jobs="$1"
     : "${p_max_jobs:=4}"

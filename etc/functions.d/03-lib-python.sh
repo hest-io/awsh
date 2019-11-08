@@ -7,7 +7,7 @@ elif [[ "${AWSH_CONTAINER}" == "docker" ]]; then
        PYTHONPATH=$PYTHONPATH:${AWSH_ROOT}/lib/python:${AWSH_ROOT}/bin/tools:${AWSH_ROOT}/bin/subcommands
        export PYTHONPATH
 else
-    if [ -e "${AWSH_ROOT}/local/python/bin/activate" ]; then
+    if [[ -e "${AWSH_ROOT}/local/python/bin/activate" ]]; then
        source ${AWSH_ROOT}/local/python/bin/activate
        PYTHONPATH=$PYTHONPATH:${AWSH_ROOT}/lib/python:${AWSH_ROOT}/bin/tools:${AWSH_ROOT}/bin/subcommands
        export PYTHONPATH

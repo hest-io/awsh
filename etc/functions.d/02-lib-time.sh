@@ -1,6 +1,6 @@
 # Simple function to convert an epoch timestamp to a date string using the
 # FV_TIMESTAMP format
-_time_from_epoch() {
+function _time_from_epoch {
 
     local ts_epoch="${1:--1}"
     local re_number='^-?[0-9]+([.][0-9]+)?$'
@@ -27,7 +27,7 @@ _time_from_epoch() {
 
 
 # Simple function to convert to epoch timestamp from a date strin
-_time_to_epoch() {
+function _time_to_epoch {
 
     local ts_time="${1:-now}"
     # Perform basic cleanup
@@ -40,7 +40,7 @@ _time_to_epoch() {
 
 # Simple function to return the current date and time in ISO-8601
 # format. Defaults to UTC timezone. Takes optional arg of valid timezone
-_time_get_iso8601_date() {
+function _time_get_iso8601_date {
     local ts_tz="${1:-UTC}"
     echo "$(TZ=${ts_tz} date "+%Y%m%dT%H%M%S")"
 }

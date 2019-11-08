@@ -4,7 +4,7 @@
 
 # Usage _graphite_send_raw 'my_metric 100 [timestamp]'
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
-_graphite_send_raw() {
+function _graphite_send_raw {
 
     _system_ensure_is_bash
 
@@ -41,7 +41,7 @@ _graphite_send_raw() {
 
 # Usage _graphite_pipe_raw '<filename>' or cat <filename> | _graphite_pipe_raw
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
-_graphite_pipe_raw() {
+function _graphite_pipe_raw {
 
     _system_ensure_is_bash
 

@@ -43,7 +43,7 @@ __awsh_region_fg="000"
 
 
 # Encode the color FG and BG colors
-_screen_encode_color() {
+function _screen_encode_color {
 
     local -r c_bg=$1
     local -r c_fg=$2
@@ -53,27 +53,27 @@ _screen_encode_color() {
 
 
 # Simple function to print a horizontal rule
-_screen_print_hr() {
+function _screen_print_hr {
 
     local detected_cols=$(tput cols)
-    : ${detected_cols:=80}
+    : "${detected_cols:=80}"
 
     echo ""
-    echo -e "$(counter=0; while [ ${counter} -lt ${detected_cols} ]; do echo -n "="; let counter=counter+1; done)"
+    echo -e "$(counter=0; while [[ ${counter} -lt ${detected_cols} ]]; do echo -n "="; ((counter=counter+1)); done)"
     echo ""
 
 }
 
 
 # Simple function to print a Top level header
-_screen_print_header_l1() {
+function _screen_print_header_l1 {
 
     local detected_cols=$(tput cols)
-    local whitespace="$(counter=0; while [ $counter -lt $detected_cols ]; do echo -n " "; let counter=counter+1; done)"
-    local hr_line="$(counter=0; while [ $counter -lt $detected_cols ]; do echo -n "="; let counter=counter+1; done)"
+    local whitespace="$(counter=0; while [[ $counter -lt $detected_cols ]]; do echo -n " "; ((counter=counter+1)); done)"
+    local hr_line="$(counter=0; while [[ $counter -lt $detected_cols ]]; do echo -n "="; ((counter=counter+1)); done)"
 
     concat_line=$(printf "= %s %s" "$1" "$whitespace")
-    let detected_cols=detected_cols-2
+    ((detected_cols=detected_cols-2))
     fixed_size_format="%-${detected_cols}.${detected_cols}s ="
     fixed_size_line=$(printf "$fixed_size_format" "$concat_line")
 
@@ -87,10 +87,10 @@ _screen_print_header_l1() {
 
 
 # Simple function to print a 2nd level header
-_screen_print_header_l2() {
+function _screen_print_header_l2 {
 
     local detected_cols=$(tput cols)
-    local hr_line="$(counter=0; while [ $counter -lt $detected_cols ]; do echo -n "="; let counter=counter+1; done)"
+    local hr_line="$(counter=0; while [[ $counter -lt $detected_cols ]]; do echo -n "="; ((counter=counter+1)); done)"
 
     concat_line=$(printf "= %s %s" "$1" "$hr_line")
     fixed_size_format="%-${detected_cols}.${detected_cols}s"
@@ -103,16 +103,16 @@ _screen_print_header_l2() {
 }
 
 
-_screen_info() {
+function _screen_info {
     echo -e "$(_screen_encode_color '' ${__green})INFO: ${__reset}${@}"
 }
 
 
-_screen_error() {
+function _screen_error {
     echo -e "$(_screen_encode_color '' ${__red})ERROR: ${__reset}${@}"
 }
 
 
-_screen_warn() {
+function _screen_warn {
     echo -e "$(_screen_encode_color '' ${__yellow})WARNING: ${__reset}${@}"
 }

@@ -14,7 +14,7 @@ DEFAULT_TOKEN_DURATION=3600
 
 
 # Helper function to load simple API keys
-_aws_load_basic_credentials() {
+function _aws_load_basic_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -29,7 +29,7 @@ _aws_load_basic_credentials() {
 }
 
 
-_aws_load_credentials_from_json() {
+function _aws_load_credentials_from_json {
 
     AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
 
@@ -56,7 +56,7 @@ _aws_load_credentials_from_json() {
 
 
 # Helper function to get API keys using MFA token
-_aws_load_mfaauth_credentials() {
+function _aws_load_mfaauth_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -102,7 +102,7 @@ _aws_load_mfaauth_credentials() {
 
 # Helper function to get API keys using ADFS based SAML2 authentication to AWS
 # after IDP form based login
-_aws_load_krb5formauth_credentials() {
+function _aws_load_krb5formauth_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -149,7 +149,7 @@ _aws_load_krb5formauth_credentials() {
 }
 
 
-_aws_login() {
+function _aws_login {
 
     local aws_id_name="$1"
 
@@ -267,7 +267,7 @@ _aws_login() {
 }
 
 
-_aws_region() {
+function _aws_region {
     local new_aws_region="$1"
     if [ -z $new_aws_region ]; then
         echo ""
@@ -279,13 +279,13 @@ _aws_region() {
     else
         AWS_DEFAULT_REGION="${new_aws_region}"
         export AWS_DEFAULT_REGION
-        
+
         _screen_info "AWS_DEFAULT_REGION now ${AWS_DEFAULT_REGION}"
     fi
 }
 
 
-_aws_logout() {
+function _aws_logout {
     env \
         | grep '^AWS_' \
         | awk -F'=' '{print $1}' \
@@ -294,8 +294,8 @@ _aws_logout() {
 }
 
 
-_aws_session_save() {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'    
+function _aws_session_save {
+    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
     env \
         | grep '^AWS_' \
         | xargs -i echo "export {}" \
@@ -304,13 +304,13 @@ _aws_session_save() {
 }
 
 
-_aws_session_load() {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'        
+function _aws_session_load {
+    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
     else
-        _    
-    fi    
+        _
+    fi
 }
 
 

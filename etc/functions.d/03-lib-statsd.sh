@@ -4,7 +4,7 @@
 
 # Usage _statsd_send_raw 'my_metric:100|g'
 # Optionally set STATSD_HOST and STATSD_PORT variables
-_statsd_send_raw() {
+function _statsd_send_raw {
 
     _system_ensure_is_bash
 
@@ -26,24 +26,24 @@ _statsd_send_raw() {
 
 
 # Usage _statsd_send_count 'my_metric:100'
-_statsd_send_count() {
+function _statsd_send_count {
     _statsd_send_raw "${1}|c"
 }
 
 
 # Usage _statsd_send_gauge 'my_metric:100'
-_statsd_send_gauge() {
+function _statsd_send_gauge {
     _statsd_send_raw "${1}|g"
 }
 
 
 # Usage _statsd_send_set 'my_metric:100'
-_statsd_send_set() {
+function _statsd_send_set {
     _statsd_send_raw "${1}|s"
 }
 
 
 # Usage _statsd_send_ms 'my_metric:100'
-_statsd_send_ms() {
+function _statsd_send_ms {
     _statsd_send_raw "${1}|ms"
 }

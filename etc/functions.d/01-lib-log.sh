@@ -1,6 +1,6 @@
 # A logging function which can be used as follows
 # _log "$LINENO" "Example test message"
-_log() {
+function _log {
 
     local p_line_number="$1"
     local p_message="$2"
@@ -27,7 +27,7 @@ _log() {
 # _log_event "$LINENO" "INFO" "Example test message"
 # _log_event "$LINENO" "ERROR" "Example test message"
 # _log_event "$LINENO" "WARNING" "Example test message"
-_log_event() {
+function _log_event {
 
     local p_line_number="$1"
     local p_severity="$2"
@@ -52,7 +52,7 @@ _log_event() {
 
 # A helper function that can be used to print timestamps to strings printed to
 # output streams aimed at mimicing the 'ts' utility if it's not present
-_log_ts() {
+function _log_ts {
     cat | while IFS= read -r line; do printf '%s %s %s\n' "$(date +'%Y-%m-%dT%H:%M:%S%z')" "$line" "$(echo -e ${__no_color})"; done
 }
 
