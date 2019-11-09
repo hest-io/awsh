@@ -109,10 +109,10 @@ function _screen_info {
 
 
 function _screen_error {
-    echo -e "$(_screen_encode_color '' ${__red})ERROR: ${__reset}${@}"
+    echo -e "$(_screen_encode_color '' ${__red})ERROR: ${__reset}${@}" >&2
 }
 
 
 function _screen_warn {
-    echo -e "$(_screen_encode_color '' ${__yellow})WARNING: ${__reset}${@}"
+    echo -e "$(_screen_encode_color '' ${__yellow})WARNING: ${__reset}${@}" >&2
 }

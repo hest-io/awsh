@@ -5,29 +5,29 @@ usage: awsh [--help] <command> [<args>]
 available commands in '$SUBCOMMAND_ROOT'
 
 EOF
-    print_list_of_subcommands
+    _awsh_list_subcommands
 }
 
 
-function show_completions {
+function _awsh_show_completions {
 
     # Variable setup
     local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find ${SUBCOMMAND_ROOT} -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
     local INTERNALCOMMANDS="login logout region session-save session-load session-purge"
-    local VS_SUBCOMMANDS=( $SUBCOMMANDS ${INTERNALCOMMANDS[@]} )
+    local VS_SUBCOMMANDS=( $SUBCOMMANDS )
     local CLOUDBUILDER_ROOT="~/.cloudbuilder"
 
     saveIFS=$IFS
     IFS=$'\n'
-    echo "${VS_SUBCOMMANDS[*]}" | sort
+    echo "${VS_SUBCOMMANDS[*]} ${INTERNALCOMMANDS}" | sort
     IFS=$saveIFS
 
 }
 
 
-function show_usage {
+function _awsh_show_usage {
     cat <<EOF
 usage: awsh [--version] [--help] <command> [<args>]
 
@@ -43,7 +43,7 @@ EOF
 }
 
 
-function version {
+function _awsh_version {
     local AWSH_VERSION
     if [[ "${AWSH_CONTAINER}" == "docker" ]]; then
         echo "${CONST_SCRIPT_NAME} version ${AWSH_VERSION_DOCKER}"
@@ -60,7 +60,7 @@ function cleanup {
 }
 
 
-function print_list_of_subcommands {
+function _awsh_list_subcommands {
 
     # Variable setup
     local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
@@ -88,7 +88,7 @@ function awsh {
 
     # Show most common commands if no args are given
     if { [ -z "$1" ] && [ -t 0 ] ; }; then
-        show_usage
+        _awsh_show_usage
         return 0
     fi
 
@@ -100,7 +100,7 @@ function awsh {
 
     # show lst of commands
     if [ "$1" == '-c' ] || [ "$1" == '--commands' ] || [ "$1" == 'commands' ]; then
-        show_completions
+        _awsh_show_completions
         return 0
     fi
 
@@ -140,7 +140,7 @@ function awsh {
         ;;
 
         version)
-            version
+            _awsh_version
         ;;
 
         *)

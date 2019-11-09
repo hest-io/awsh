@@ -1,5 +1,5 @@
-# A simple function to load and export the AWS credentials from a given file.
-# We expect the credentials to be in standard AWS-Conf format;
+# A simple set of functions to load and export the AWS credentials from a given
+# file. We expect the credentials to be in standard AWS-Conf format;
 #
 #   aws_access_key_id=ASDFGHJKDFGHJGH
 #   aws_secret_access_key=DFGBNM&UYJFGHJ&UJ&*(*I%TG)
@@ -11,6 +11,18 @@
 
 # Default MFA token duration in seconds
 DEFAULT_TOKEN_DURATION=3600
+
+
+# A boolean helper to provide a means of checking if credentials are active
+# before attempting other commands that require the user to be logged in
+function _aws_is_authenticated {
+
+    if [[ -z ${AWS_ACCESS_KEY_ID} ]] || [[ -z ${AWS_SECRET_ACCESS_KEY} ]]; then
+        return 1
+    fi
+    return 0
+
+}
 
 
 # Helper function to load simple API keys
@@ -269,18 +281,22 @@ function _aws_login {
 
 function _aws_region {
     local new_aws_region="$1"
-    if [ -z $new_aws_region ]; then
-        echo ""
-        echo "You must specify a valid region for this account. Valid entries are:"
-        region_list="$(aws ec2 describe-regions --output=text | awk '{printf "%s ", $3}')"
-        echo "${region_list}" | fold -w 80 -s | column -t
-        echo ""
-        echo "Switch region with 'awsh region <name>'"
-    else
-        AWS_DEFAULT_REGION="${new_aws_region}"
-        export AWS_DEFAULT_REGION
+    if _aws_is_authenticated ; then
+        if [ -z $new_aws_region ]; then
+            echo ""
+            echo "You must specify a valid region for this account. Valid entries are:"
+            region_list="$(aws ec2 describe-regions --output=text | awk '{printf "%s ", $3}')"
+            echo "${region_list}" | fold -w 80 -s | column -t
+            echo ""
+            echo "Switch region with 'awsh region <name>'"
+        else
+            AWS_DEFAULT_REGION="${new_aws_region}"
+            export AWS_DEFAULT_REGION
 
-        _screen_info "AWS_DEFAULT_REGION now ${AWS_DEFAULT_REGION}"
+            _screen_info "AWS_DEFAULT_REGION now ${AWS_DEFAULT_REGION}"
+        fi
+    else
+        _screen_error 'This command requires an active AWS session. Login first please!'
     fi
 }
 

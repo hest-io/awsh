@@ -87,6 +87,8 @@ output_format="${2:-simple}"
 # Main Script
 ##############################################################################
 
+_assert_is_authenticated
+
 awsh-cache aws kms list-keys --output=json \
     | grep KeyId \
     | awk -F':' '{print $2}' \

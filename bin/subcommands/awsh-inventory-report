@@ -149,6 +149,8 @@ done
 # Main Script
 ##############################################################################
 
+_assert_is_authenticated
+
 content_buffer="$(mktemp)"
 resource_filter="$(mktemp)"
 # These variables will be visible to the header and footer page templates

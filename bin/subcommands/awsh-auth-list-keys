@@ -73,8 +73,7 @@ cleanup() {
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_usage
     exit 0
 fi
@@ -86,6 +85,8 @@ output_format="${2:-simple}"
 ##############################################################################
 # Main Script
 ##############################################################################
+
+_assert_is_authenticated
 
 buffer=$(mktemp ${AWSH_ROOT}/tmp/iam-buffer.XXXXXXX)
 

@@ -77,8 +77,7 @@ cleanup() {
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_usage
     exit 0
 fi
@@ -90,8 +89,7 @@ subnet_id="${2:-none}"
 num_private_ips="${3:-1}"
 
 # show help for no arguments if stdin is a terminal
-if [ "${subnet_id}" == 'none' ]
-then
+if [ "${subnet_id}" == 'none' ]; then
     show_usage
     exit 0
 fi
@@ -125,6 +123,8 @@ claim_ip_from_subnet() {
 ##############################################################################
 # Main Script
 ##############################################################################
+
+_assert_is_authenticated
 
 for counter in $(seq 1 ${num_private_ips}); do
     claim_ip_from_subnet "${subnet_id}"

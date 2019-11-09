@@ -88,18 +88,18 @@ EOF
 ##############################################################################
 
 # Show most common commands if no args are given
-if { [ -z "$1" ] && [ -t 0 ] ; }
-then
+if { [ -z "$1" ] && [ -t 0 ] ; }; then
     show_help
     exit 0
 fi
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_help
     exit 0
 fi
+
+_assert_is_authenticated
 
 target="$(echo "$1" | sed -e 's/\(.*@\)//g' | sed -e 's/\(:.*\)//g')"
 target_address=$(ip_from_instance_name "$target")

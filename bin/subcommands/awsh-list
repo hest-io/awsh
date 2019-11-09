@@ -155,6 +155,8 @@ vs_table_helper_args=("${vs_args[@]:1}")
 # Main Script
 ##############################################################################
 
+_assert_is_authenticated
+
 filter_path=
 
 # Check for a valid filter in both AWSH and in the users' config
