@@ -53,7 +53,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help]
 
@@ -63,7 +63,7 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }

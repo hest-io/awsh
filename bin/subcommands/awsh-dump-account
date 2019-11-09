@@ -53,7 +53,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] [-d <DIR>]
 
@@ -72,13 +72,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-dump_global_to_path() {
+function dump_global_to_path {
 
     local dump_path=$1
     local resources=
@@ -100,7 +100,7 @@ dump_global_to_path() {
 }
 
 
-dump_regional_to_path() {
+function dump_regional_to_path {
 
     local aws_region=$1
     local dump_path=$2

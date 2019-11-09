@@ -53,7 +53,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] [-f <FORMAT>]
 
@@ -66,15 +66,14 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ];then
     show_usage
     exit 0
 fi

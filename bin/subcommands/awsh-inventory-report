@@ -55,7 +55,7 @@ output_format="simple"
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [-h] [-f <FORMAT>] [-d <OUTPUT-DIR>]
 
@@ -68,13 +68,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-repeat() {
+function repeat {
     local input="$1"
     local count="$2"
     myString="$(printf "%${count}s")"
@@ -82,27 +82,27 @@ repeat() {
 }
 
 
-title() {
+function title {
     echo "$(echo "${1}" | tr '[:lower:]' '[:upper:]' | sed -e "s/\-/ /g" -e "s/\_/ /g")"
 }
 
 
 # Format specific header
-fs_page_header() {
+function fs_page_header {
     local fs_header="${AWSH_ROOT}/etc/report.d/${output_format}/page_header"
     [ -f "${fs_header}" ] && . "${fs_header}"
 }
 
 
 # Format specific footer
-fs_page_footer() {
+function fs_page_footer {
     local fs_footer="${AWSH_ROOT}/etc/report.d/${output_format}/page_footer"
     [ -f "${fs_footer}" ] && . "${fs_footer}"
 }
 
 
 # Format specific headings
-fs_heading() {
+function fs_heading {
     local level=$1
     local val="${2}"
     case ${output_format} in

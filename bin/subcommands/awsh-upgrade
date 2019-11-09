@@ -52,7 +52,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help]
 
@@ -63,13 +63,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-require_clean_work_tree() {
+function require_clean_work_tree {
     # Update the index
     git update-index -q --ignore-submodules --refresh
     err=0
@@ -99,8 +99,7 @@ require_clean_work_tree() {
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_usage
     exit 0
 fi

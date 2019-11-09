@@ -55,7 +55,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] [-s <SUBNET-ID>] [num-ips]
 
@@ -70,7 +70,7 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
@@ -95,7 +95,7 @@ if [ "${subnet_id}" == 'none' ]; then
 fi
 
 
-claim_ip_from_subnet() {
+function claim_ip_from_subnet {
 
     local subnet_id=$1
     # Create an ENI
