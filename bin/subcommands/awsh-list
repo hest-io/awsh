@@ -57,7 +57,7 @@ AWSCLI_DEFAULT_ARGS="--output=json"
 # Functions
 ##############################################################################
 
-function show_usage) {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] <resource> [-f <FORMAT>]
        $CONST_SCRIPT_NAME ec2
@@ -73,13 +73,13 @@ EOF
 }
 
 
-function cleanup) {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-function show_completions) {
+function show_completions {
 
     SUBCOMMANDS="$(find ${AWSH_ROOT}/etc/filters.d/ -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
     VS_SUBCOMMANDS=( $SUBCOMMANDS )
@@ -92,20 +92,20 @@ function show_completions) {
 }
 
 
-function _generate) {
+function _generate {
     for item in $(eval "aws ${output_generator}"); do
         eval "${AWSCLI_CMD} ${awscli_cmd_args[@]} ${AWSCLI_DEFAULT_ARGS} | ${output_enricher[@]}"
     done | jq --monochrome-output -s '.'
 }
 
 
-function _filter) {
+function _filter {
     jq --monochrome-output --from-file "${filter_path}" \
         | jq --monochrome-output -s '.'
 }
 
 
-function _discard) {
+function _discard {
     saveIFS=$IFS
     IFS=','
     local discard_filter=". "
@@ -120,13 +120,13 @@ function _discard) {
 }
 
 
-function _tabulate) {
+function _tabulate {
     cat \
         | awsh-json2orderedtable -s "${output_sort_keys}" ${vs_table_helper_args[*]}
 }
 
 
-function _tidy) {
+function _tidy {
     ${output_tidy[@]}
 }
 

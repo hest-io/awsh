@@ -301,6 +301,48 @@ function _aws_region {
 }
 
 
+function _aws_save_account_metadata {
+
+    if _aws_is_authenticated ; then
+
+        AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
+
+        # Create the metadata file if we don't already have one
+        if [[ ! -f "~/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" ]]; then
+
+            AWS_ACCOUNT_ALIAS="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
+
+            cat > "~/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" <<EOF
+            AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
+            AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_ALIAS}
+EOF
+
+        fi
+
+        export AWS_ACCOUNT_NUMBER AWS_ACCOUNT_ALIAS
+    fi
+
+}
+
+
+function _aws_load_account_metadata {
+
+    if _aws_is_authenticated ; then
+
+        AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
+
+        # Create the metadata file if we don't already have one
+        if [[ -f "~/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" ]]; then
+            source "~/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta"
+            export AWS_ACCOUNT_NUMBER AWS_ACCOUNT_ALIAS
+        else
+            _aws_save_account_metadata
+        fi
+    fi
+
+}
+
+
 function _aws_logout {
     env \
         | grep '^AWS_' \
