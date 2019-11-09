@@ -268,6 +268,11 @@ function _aws_login {
     echo -e "INFO : ${__fg_yellow}AWS_ACCESS_KEY_ID......${__no_color} $AWS_ACCESS_KEY_ID"
     echo -e "INFO : ${__fg_yellow}AWS_SECRET_ACCESS_KEY..${__no_color} $AWS_SECRET_ACCESS_KEY"
 
+    _aws_load_account_metadata
+    if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
+        AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+    fi
+
     export AWS_SSH_KEY AWS_ID_NAME
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
@@ -311,8 +316,8 @@ function _aws_save_account_metadata {
             AWS_ACCOUNT_ALIAS="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
 
             cat > "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" <<-EOF
-            AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
-            AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_ALIAS}
+AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
+AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_ALIAS}
 EOF
 
         fi
