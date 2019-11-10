@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Simple function to get a list of the local IP addresses
 function _network_get_local_ip {
     echo "$(ifconfig | grep 'inet addr' | cut -d: -f2 | cut -d' ' -f1 | grep -v '127.0.0.1')"

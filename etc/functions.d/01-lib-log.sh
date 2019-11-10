@@ -1,11 +1,12 @@
+#!/usr/bin/env bash
 # A logging function which can be used as follows
 # _log "$LINENO" "Example test message"
 function _log {
 
     local p_line_number="$1"
     local p_message="$2"
-    : ${p_line_number:="0"}
-    : ${DEFAULT_OUT:=/dev/stderr}
+    : "${p_line_number:=0}"
+    : "${DEFAULT_OUT:=/dev/stderr}"
 
     timestamp="$(date +'%Y-%m-%dT%H:%M:%S%z')"
     log_file_msg=$(printf "[%s]: %-s:%04d : %s" "$timestamp" "$CONST_SCRIPT_NAME" "$p_line_number" "${p_message}")
@@ -16,7 +17,7 @@ function _log {
     # Output to the DEFAULT_OUT file if enabled
     [[ $LOG_OUTPUT_ENABLED -eq $TRUE ]] && echo -e "${log_file_msg}" >> "$DEFAULT_OUT"
     # Output to the syslog if the logger command is found
-    _dummy=$(which logger > /dev/null 2>&1)
+    _dummy=$(command -v logger > /dev/null 2>&1)
     has_syslogger=$?
     [[ $SYSLOG_OUTPUT_ENABLED -eq $TRUE ]] && [[ "$has_syslogger" -eq $TRUE ]] && logger -t "$CONST_SCRIPT_NAME[$$]" -p user.info "${log_tty_msg}"
 
@@ -32,20 +33,20 @@ function _log_event {
     local p_line_number="$1"
     local p_severity="$2"
     local p_message="$3"
-    : ${p_line_number:="0"}
-    : ${p_severity:="INFO"}
-    : ${EVENT_LOG:=/dev/stderr}
+    : "${p_line_number:=0}"
+    : "${p_severity:='INFO'}"
+    : "${EVENT_LOG:=/dev/stderr}"
 
     timestamp="$(date +'%Y-%m-%dT%H:%M:%S%z')"
     log_file_msg=$(printf "[%s]: %03d : %-7.7s : %s" "$timestamp" "$p_line_number" "${p_severity}" "${p_message}")
     log_tty_msg=$(printf "[%s]: %03d : %-7.7s : %s" "$timestamp" "$p_line_number" "${p_severity}" "${p_message}")
 
     # Output to the EVENT_LOG file if enabled
-    [ $EVENT_OUTPUT_ENABLED -eq $TRUE ] && echo -e "${log_file_msg}" >> "$EVENT_LOG"
+    [[ $EVENT_OUTPUT_ENABLED -eq $TRUE ]] && echo -e "${log_file_msg}" >> "$EVENT_LOG"
     # Also output to the syslog if the logger command is found
-    _dummy=$(which logger > /dev/null 2>&1)
+    _dummy=$(command -v logger > /dev/null 2>&1)
     has_syslogger=$?
-    [ $SYSLOG_OUTPUT_ENABLED -eq $TRUE ] && [ $has_syslogger -eq $TRUE ] && logger -t "$CONST_SCRIPT_NAME[$$]" -p user.info "${log_tty_msg}"
+    [[ $SYSLOG_OUTPUT_ENABLED -eq $TRUE ]] && [[ $has_syslogger -eq $TRUE ]] && logger -t "$CONST_SCRIPT_NAME[$$]" -p user.info "${log_tty_msg}"
 
 }
 

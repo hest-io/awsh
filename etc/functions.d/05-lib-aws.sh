@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # A simple set of functions to load and export the AWS credentials from a given
 # file. We expect the credentials to be in standard AWS-Conf format;
 #

@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Useful aliases for color codes
 
 # Text Bold

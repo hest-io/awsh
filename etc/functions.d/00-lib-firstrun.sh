@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Intended to perform all tasks that need to be executed on a first run of the
 # tools
 
