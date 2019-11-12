@@ -30,7 +30,7 @@ CONST_SCRIPT_NAME=${0##*/}
 : "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-source ${AWSH_ROOT}/etc/awshrc
+source "${AWSH_ROOT}/etc/awshrc"
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -90,8 +90,7 @@ function require_clean_work_tree {
         err=1
     fi
 
-    if [ $err = 1 ]
-    then
+    if [ $err = 1 ]; then
         echo >&2 "Please commit or stash them."
         exit 1
     fi
@@ -116,4 +115,4 @@ git pull
 echo "AWSH | Ensuring requirements are present"
 "${AWSH_ROOT}/local/python/bin/pip" install -r "${AWSH_ROOT}/requirements/requirements.python2"
 popd
-echo "AWSH | Status: $(awsh --version)"
+echo "AWSH | Status: $(awsh version)"
