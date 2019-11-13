@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 function show_help {
     cat <<EOF
 usage: awsh [--help] <command> [<args>]

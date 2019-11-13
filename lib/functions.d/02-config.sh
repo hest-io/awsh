@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Awesome INI parser in BASH detailed in http://pastebin.com/m4fe6bdaf
 # from http://theoldschooldevops.com/2008/02/09/bash-ini-parser/ with some
 # updates to help with section capture

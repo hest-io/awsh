@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # An alias for xargs to ensure that the expected behaviour in scripts is as
 # intended for those on OS X
 function _system_xargs {

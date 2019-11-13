@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # We will attempt to create a PS1 that displays AWS identity when active
 
 _AWSH_OLDPROMPT=

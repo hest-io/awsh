@@ -6,7 +6,7 @@ info_source="$1"
 filter="$2"
 
 # Load the Frameverk
-source ${AWSH_ROOT}/etc/awshrc
+source "${AWSH_ROOT}/etc/awshrc"
 
 # Tidy the filter so that it can be used with grep
 grep_filter="$(echo "${filter}" \
@@ -24,12 +24,12 @@ grep_filter="$(echo "${filter}" \
 num_patterns=$(echo "${grep_filter}" | awk -F '|' '{print NF}')
 
 # Now call the provided AWSH command and use the grep filter
-awsh list ${info_source} | awshgrep -P -i "${grep_filter}"
+awsh list "${info_source}" | awshgrep -P -i "${grep_filter}"
 
 # If we match less patterns that we were provided then let the user know
-num_matches=$(awsh list ${info_source} | grep -c -P -i "${grep_filter}")
+num_matches=$(awsh list "${info_source}" | grep -c -P -i "${grep_filter}")
 
-if [ ${num_matches} -lt ${num_patterns} ]; then
+if [[ ${num_matches} -lt ${num_patterns} ]]; then
     echo ""
     echo -e "Filter had ${__fg_red}${num_patterns}${__reset} patterns but we only found ${__fg_red}${num_matches}${__reset} matches"
     echo ""

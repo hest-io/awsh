@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Reproduces the behaviour of the Python aray.join() function. Copied from the
 # awesome example on https://stackoverflow.com/a/17841619
 function _string_join {

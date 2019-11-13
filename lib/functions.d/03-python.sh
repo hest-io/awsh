@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Activate the local instance of Python or correct the PYTHONPATH env variable
 # depending on the OS detected.
 # TODO(kxseven: Better solution needed on OSX for forked shells from within Python

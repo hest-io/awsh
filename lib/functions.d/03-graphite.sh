@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Simple function to send metrics to Graphite based on the awesome example from
 # https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
 # Original Author: Alexander Fortin <alexander.fortin@gmail.com>

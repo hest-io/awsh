@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Simple function to convert an epoch timestamp to a date string using the
 # FV_TIMESTAMP format
 function _time_from_epoch {
