@@ -4,7 +4,7 @@ function show_help {
     cat <<EOF
 usage: awsh [--help] <command> [<args>]
 
-available commands in '$SUBCOMMAND_ROOT'
+available commands:
 
 EOF
     _awsh_list_subcommands
@@ -17,9 +17,11 @@ function _awsh_show_completions {
     local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find ${SUBCOMMAND_ROOT} -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
-    local INTERNALCOMMANDS="login logout region session-save session-load session-purge"
-    local VS_SUBCOMMANDS=( $SUBCOMMANDS )
+    local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' )
     local CLOUDBUILDER_ROOT="~/.cloudbuilder"
+
+    # Add all of our discovered sub-commands
+    VS_SUBCOMMANDS+=( $SUBCOMMANDS )
 
     saveIFS=$IFS
     IFS=$'\n'
@@ -31,7 +33,7 @@ function _awsh_show_completions {
 
 function _awsh_show_usage {
     cat <<EOF
-usage: awsh [--version] [--help] <command> [<args>]
+usage: awsh [version] [--help] <command> [<args>]
 
 The most commonly used commands are:
   whoami            Lists information about the current API user
@@ -64,17 +66,7 @@ function cleanup {
 
 function _awsh_list_subcommands {
 
-    # Variable setup
-    local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
-    local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
-    local SUBCOMMANDS="$(find $SUBCOMMAND_ROOT -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
-    local VS_SUBCOMMANDS=( $SUBCOMMANDS )
-    local CLOUDBUILDER_ROOT="~/.cloudbuilder"
-
-    saveIFS=$IFS
-    IFS=$'\n'
-    echo "${VS_SUBCOMMANDS[*]}" | sort | column -c 80
-    IFS=$saveIFS
+    _awsh_show_completions | sort | column -c 80
 
 }
 
@@ -85,8 +77,6 @@ function awsh {
     local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find $SUBCOMMAND_ROOT -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
-    local VS_SUBCOMMANDS=( $SUBCOMMANDS )
-    local CLOUDBUILDER_ROOT="~/.cloudbuilder"
 
     # Show most common commands if no args are given
     if { [ -z "$1" ] && [ -t 0 ] ; }; then
@@ -149,7 +139,7 @@ function awsh {
             # Ensure that the command we will try to execute actually exists in the
             # subcommand dir
             if [ ! -x "${SUBCOMMAND_ROOT}/awsh-${_sub_command}" ]; then
-                echo "${CONST_SCRIPT_NAME}: '${_sub_command}' is not a valid awsh command. See 'awsh --help' for more info."
+                _screen_error "'${_sub_command}' is not a valid awsh command. See 'awsh --help' for more info."
                 return 1
             fi
 
