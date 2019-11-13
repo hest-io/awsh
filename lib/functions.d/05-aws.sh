@@ -313,10 +313,10 @@ function _aws_save_account_metadata {
 
         AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
         # Create the metadata file if we don't already have one
-        if [[ ! -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" ]]; then
+        if [[ ! -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" ]]; then
             AWS_ACCOUNT_ALIAS="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
 
-            cat > "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" <<-EOF
+            cat > "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" <<-EOF
 AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
 AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_ALIAS}
 EOF
@@ -335,8 +335,8 @@ function _aws_load_account_metadata {
 
         AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
         # Create the metadata file if we don't already have one
-        if [[ -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta" ]]; then
-            source "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.meta"
+        if [[ -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" ]]; then
+            source "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh"
             export AWS_ACCOUNT_NUMBER AWS_ACCOUNT_ALIAS
         else
             _aws_save_account_metadata
