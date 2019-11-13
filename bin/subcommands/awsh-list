@@ -93,6 +93,7 @@ function show_completions {
 
 
 function _generate {
+    _screen_info "This filter uses a generator. Please be patient while we collect data"
     for item in $(eval "aws ${output_generator}"); do
         eval "${AWSCLI_CMD} ${awscli_cmd_args[@]} ${AWSCLI_DEFAULT_ARGS} | ${output_enricher[@]}"
     done | jq --monochrome-output -s '.'
@@ -167,7 +168,8 @@ if [ -f "${HOME}/.awsh/filters/${resource_name}.jqf" ]; then
 fi
 
 if [ -z ${filter_path} ]; then
-    _log "$LINENO" "No filter defined for that resource. Check your available filters"
+    _screen_warn "No filter defined for that resource. These are the filters we currently have access to;"
+    show_completions | column
     exit 1
 fi
 
