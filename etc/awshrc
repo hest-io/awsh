@@ -39,7 +39,7 @@ export FV_TIMESTAMP_FORMAT
 export TRUE FALSE AWSH_ROOT
 
 # Load the helper scripts
-for helper_script in ${AWSH_ROOT}/etc/functions.d/* ; do
+for helper_script in ${AWSH_ROOT}/lib/functions.d/* ; do
     . "$helper_script"
 done
 
