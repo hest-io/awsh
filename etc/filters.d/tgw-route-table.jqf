@@ -1,0 +1,10 @@
+#cmd: ec2 describe-transit-gateway-route-tables
+#sort: TransitGatewayId,State
+
+.TransitGatewayRouteTables[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)

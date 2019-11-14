@@ -1,0 +1,14 @@
+#cmd: ec2 describe-transit-gateway-vpc-attachments
+#sort: TransitGatewayId,VpcId,State
+
+.TransitGatewayVpcAttachments[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Options // {})
+)
++
+(
+    (.Tags // [])|from_entries
+)
