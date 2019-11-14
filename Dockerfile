@@ -8,6 +8,7 @@ MAINTAINER hugh.mooney@hest.io
 # ENVs
 ###############################################################################
 ENV AWSH_ROOT /opt/awsh
+ENV AWSH_USER_HOME /home/awsh
 ENV PYTHONPATH /opt/awsh/lib/python
 ENV PATH /opt/awsh/bin:/opt/awsh/bin/tools:$PATH
 ENV AWSH_PYTHON_DEPS /tmp/requirements.python2
@@ -64,7 +65,7 @@ ARG NO_PROXY="${NO_PROXY}"
 RUN adduser -D -u 1000 awsh
 
 # AWSH and AWS CLI paths
-RUN mkdir -p /opt/awsh /opt/awsh/log /opt/awsh/tmp /home/awsh/.aws
+RUN mkdir -p ${AWSH_ROOT}/log ${AWSH_ROOT}/tmp /home/awsh/.aws
 COPY requirements/requirements.python2 ${AWSH_PYTHON_DEPS}
 
 RUN \
@@ -83,24 +84,34 @@ RUN \
     # cleanup after installations
     rm -rf /var/cache/apk/*
 
-COPY / /opt/awsh
+COPY / ${AWSH_ROOT}
 
+# Link the JQ module library
+RUN ln -s ${AWSH_ROOT}/lib/jq ${AWSH_USER_HOME}/.jq
+
+# ensure the AWSH lib is being loaded into the shell
+RUN echo '. /opt/awsh/etc/awshrc' >> ${AWSH_USER_HOME}/.bashrc
+
+# Build default AWS CLI config so that it doesn't have a brain fart when
+# run due to not setting it's own sensible defaults
+RUN { \
+    echo '[default]' ; \
+    echo 'output = json' ; \
+    } | tee ${AWSH_USER_HOME}/.aws/config
+
+RUN { \
+    echo '[default]' ; \
+    echo 'aws_access_key_id = 1' ; \
+    echo 'aws_secret_access_key = 1' ; \
+    } | tee ${AWSH_USER_HOME}/.aws/credentials
+    
+# ensure ownership of AWSH paths
 RUN \
-    # ensure the AWSH lib is being loaded into the shell
-    echo '. /opt/awsh/etc/awshrc' >> /home/awsh/.bashrc && \
-    # Build default AWS CLI config so that it doesn't have a brain fart when
-    # run due to not setting it's own sensible defaults
-    echo '[default]' >> /home/awsh/.aws/config && \
-    echo 'output = json' >> /home/awsh/.aws/config && \
-    echo '[default]' >> /home/awsh/.aws/credentials && \
-    echo 'aws_access_key_id = 1' >> /home/awsh/.aws/credentials && \
-    echo 'aws_secret_access_key = 1' >> /home/awsh/.aws/credentials && \
-    # ensure ownership of AWSH paths
-    chown -R awsh: /opt/awsh && \
-    chown -R awsh: /home/awsh
+    chown -R awsh: ${AWSH_ROOT} && \
+    chown -R awsh: ${AWSH_USER_HOME}
 
 USER awsh
 
-WORKDIR /home/awsh
+WORKDIR ${AWSH_USER_HOME}
 
 ENTRYPOINT ["/bin/bash"]
