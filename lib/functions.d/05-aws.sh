@@ -60,7 +60,7 @@ function _aws_load_credentials_from_json {
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_EXPIRY}")
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date ${AWS_TOKEN_EXPIRY})
-    echo -e "INFO : ${__fg_yellow}AWS_TOKEN_EXPIRES......${__no_color} $expiry_time"
+    _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
@@ -85,7 +85,7 @@ function _aws_load_mfaauth_credentials {
 
     echo -e -n "INFO : ${__fg_red}MFA Account Detected... ${__no_color}"
     read -p "Please specify the MFA PIN Now: " response
-    echo -e "INFO : ${__fg_red}Requesting Token for... ${REQUESTED_TOKEN_DURATION}s ${__no_color}"
+    _screen_note  "Requesting Token for... ${REQUESTED_TOKEN_DURATION}s"
     ${AWSH_ROOT}/bin/subcommands/awsh-token-mfaauth-create \
         "$aws_access_key_id" \
         "$aws_secret_access_key" \
@@ -100,12 +100,12 @@ function _aws_load_mfaauth_credentials {
     AWS_SESSION_TOKEN="$(grep -h -i aws_security_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2}')"
 
-    echo -e "INFO : ${__fg_yellow}AWS_MFA_ID.............${__no_color} $AWS_MFA_ID"
+    _screen_note "AWS_MFA_ID............. $AWS_MFA_ID"
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
-    echo -e "INFO : ${__fg_yellow}AWS_TOKEN_EXPIRES......${__no_color} $expiry_time"
+    _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_MFA_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
@@ -133,8 +133,8 @@ function _aws_load_krb5formauth_credentials {
     active_tokens="$(klist 2>/dev/null)"
     [ $? -eq 0 ] || { echo "ERROR: No AD/Kerberos token found. Start with kinit to authenticate against your directory first" && return ;}
 
-    echo -e "INFO : ${__fg_red}Kerberos IDP Account Detected... ${__no_color}"
-    echo -e "INFO : ${__fg_red}Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s ${__no_color}"
+    _screen_note  "Kerberos IDP Account Detected..."
+    _screen_note  "Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s"
     ${AWSH_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
         "${region}" \
         "${aws_idp_url}" \
@@ -154,7 +154,7 @@ function _aws_load_krb5formauth_credentials {
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
-    echo -e "INFO : ${__fg_yellow}AWS_TOKEN_EXPIRES......${__no_color} $expiry_time"
+    _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
@@ -263,11 +263,11 @@ function _aws_login {
     # Check to determine if we have a valid set of credentials for use
     { [ -z $AWS_ACCESS_KEY_ID ] || [ -z $AWS_SECRET_ACCESS_KEY ]; } && { echo "ERROR: Valid credentials not found in $AWS_CONFIG_FILE. Token generation failed" && return;}
 
-    echo -e "INFO : ${__fg_yellow}AWS_CONFIG_FILE........${__no_color} $AWS_CONFIG_FILE"
-    echo -e "INFO : ${__fg_yellow}AWS_SSH_KEY............${__no_color} $AWS_SSH_KEY"
-    echo -e "INFO : ${__fg_yellow}AWS_DEFAULT_REGION.....${__no_color} $AWS_DEFAULT_REGION"
-    echo -e "INFO : ${__fg_yellow}AWS_ACCESS_KEY_ID......${__no_color} $AWS_ACCESS_KEY_ID"
-    echo -e "INFO : ${__fg_yellow}AWS_SECRET_ACCESS_KEY..${__no_color} $AWS_SECRET_ACCESS_KEY"
+    _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
+    _screen_note "AWS_SSH_KEY............ $AWS_SSH_KEY"
+    _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
+    _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
+    _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
 
     _aws_load_account_metadata
     if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
@@ -343,6 +343,17 @@ function _aws_load_account_metadata {
         fi
     fi
 
+}
+
+
+function _aws_show_credentials {
+    if _aws_is_authenticated ; then
+        echo "--snip--"
+        env | grep -E "^AWS_SECRET_ACCESS_KEY|^AWS_DEFAULT_REGION|^AWS_SESSION_TOKEN|^AWS_ACCESS_KEY_ID|^AWS_SECURITY_TOKEN"
+        echo "--snip--"
+    else
+        _screen_error 'This command requires an active AWS session. Login first please!'
+    fi
 }
 
 

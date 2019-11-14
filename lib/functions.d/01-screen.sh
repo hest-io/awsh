@@ -15,6 +15,7 @@ __color_start="\\033["
 __color_end="m"
 __fg="38;5;"
 __bg="48;5;"
+__bg_transparent="49;"
 
 # Colors
 __black="000"
@@ -104,16 +105,25 @@ function _screen_print_header_l2 {
 }
 
 
+# Intentionally outputs to stdout
 function _screen_info {
-    echo -e "$(_screen_encode_color '' ${__green})INFO: ${__reset}${@}"
+    echo -e "$(_screen_encode_color ${__bg_transparent} ${__green})INFO: ${__reset}${@}"
 }
 
 
+# Intentionally outputs to stderr to avoid causing issues during stdout stream processing
+function _screen_note {
+    echo -e "$(_screen_encode_color ${__bg_transparent} ${__cyan})INFO: ${__reset}${@}" >&2
+}
+
+
+# Intentionally outputs to stderr to avoid causing issues during stdout stream processing
 function _screen_error {
-    echo -e "$(_screen_encode_color '' ${__red})ERROR: ${__reset}${@}" >&2
+    echo -e "$(_screen_encode_color ${__bg_transparent} ${__red})ERROR: ${__reset}${@}" >&2
 }
 
 
+# Intentionally outputs to stderr to avoid causing issues during stdout stream processing
 function _screen_warn {
-    echo -e "$(_screen_encode_color '' ${__yellow})WARNING: ${__reset}${@}" >&2
+    echo -e "$(_screen_encode_color ${__bg_transparent} ${__yellow})WARNING: ${__reset}${@}" >&2
 }

@@ -17,7 +17,7 @@ function _awsh_show_completions {
     local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find ${SUBCOMMAND_ROOT} -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
-    local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' )
+    local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' 'creds')
     local CLOUDBUILDER_ROOT="~/.cloudbuilder"
 
     # Add all of our discovered sub-commands
@@ -117,6 +117,10 @@ function awsh {
 
         logout|session-purge)
             _aws_logout
+        ;;
+
+        credentials|creds)
+            _aws_show_credentials
         ;;
 
         session-save)
