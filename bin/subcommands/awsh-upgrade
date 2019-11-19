@@ -26,12 +26,11 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source "${AWSH_ROOT}/etc/awshrc"
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,9 +40,9 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
 # Trap  abnormal termination
@@ -53,7 +52,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help]
 
@@ -64,13 +63,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-require_clean_work_tree() {
+function require_clean_work_tree {
     # Update the index
     git update-index -q --ignore-submodules --refresh
     err=0
@@ -91,8 +90,7 @@ require_clean_work_tree() {
         err=1
     fi
 
-    if [ $err = 1 ]
-    then
+    if [ $err = 1 ]; then
         echo >&2 "Please commit or stash them."
         exit 1
     fi
@@ -100,8 +98,7 @@ require_clean_work_tree() {
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_usage
     exit 0
 fi
@@ -118,4 +115,4 @@ git pull
 echo "AWSH | Ensuring requirements are present"
 "${AWSH_ROOT}/local/python/bin/pip" install -r "${AWSH_ROOT}/requirements/requirements.python2"
 popd
-echo "AWSH | Status: $(awsh --version)"
+echo "AWSH | Status: $(awsh version)"

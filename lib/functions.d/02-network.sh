@@ -1,5 +1,7 @@
+#!/usr/bin/env bash
+
 # Simple function to get a list of the local IP addresses
-_net_get_local_ip() {
+function _network_get_local_ip {
     echo "$(ifconfig | grep 'inet addr' | cut -d: -f2 | cut -d' ' -f1 | grep -v '127.0.0.1')"
 }
 
@@ -7,7 +9,7 @@ _net_get_local_ip() {
 # Simple function to test if the variable is a valid IP address. Additionally
 # it will echo to stdout the list of matching valid IP addresses so that it can
 # be used as a filter
-_net_is_valid_ip4_address() {
+function _network_is_valid_ip4_address {
 
     echo "$1" | grep -Eoaq "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"
     return $?
@@ -17,8 +19,8 @@ _net_is_valid_ip4_address() {
 
 # Simple function to test if remote destination is reachable. Defaults to port
 # 80. Only valid for TCP targets and returns 0 (open) or 1
-# Use with _net_can_reach google.com 80
-_net_can_reach() {
+# Use with _network_can_reach google.com 80
+function _network_can_reach {
     local tgt_host="${1:-127.0.0.1}"
     local tgt_port="${2:-80}"
     timeout 1 bash -c ">/dev/tcp/${tgt_host}/${tgt_port}" && result=0 || result=1
@@ -30,9 +32,9 @@ _net_can_reach() {
 # CURL/WGET. Remember to use a valid protocol request
 # (eg Add 'GET <url>\n' if HTTP)
 # Usage:
-#   Read    : _net_read_from google.com 80 'GET /api/data\n'
-#   Download: _net_read_from www.freeipa.org 80 "GET /images/freeipa/freeipa-logo-small.png\n" > /tmp/file
-_net_read_from() {
+#   Read    : _network_read_from google.com 80 'GET /api/data\n'
+#   Download: _network_read_from www.freeipa.org 80 "GET /images/freeipa/freeipa-logo-small.png\n" > /tmp/file
+function _network_read_from {
     local tgt_host="${1:-127.0.0.1}"
     local tgt_port="${2:-80}"
     local tgt_request="${3:-GET / HTTP/1.0\n\n}"
@@ -43,28 +45,28 @@ _net_read_from() {
 
 
 # Helper alias to read from target after making an HTTP 1.0 request
-_net_http_1_0_read_from_url() {
+function _network_http_1_0_read_from_url {
     local tgt_host="${1:-127.0.0.1}"
     local tgt_port="${2:-80}"
     local tgt_request="${3:-/}"
-    _net_read_from "$tgt_host" "$tgt_port" "GET ${tgt_request} HTTP/1.0\n\n"
+    _network_read_from "$tgt_host" "$tgt_port" "GET ${tgt_request} HTTP/1.0\n\n"
 }
 
 
 # Helper alias to read from target after making an HTTP 1.1 request
-_net_http_1_1_read_from_url() {
+function _network_http_1_1_read_from_url {
     local tgt_host="${1:-127.0.0.1}"
     local tgt_port="${2:-80}"
     local tgt_request="${3:-/}"
-    _net_read_from "$tgt_host" "$tgt_port" "GET ${tgt_request} HTTP/1.1\nHost:${tgt_host}\nConnection: close\n\n"
+    _network_read_from "$tgt_host" "$tgt_port" "GET ${tgt_request} HTTP/1.1\nHost:${tgt_host}\nConnection: close\n\n"
 }
 
 
 # Simply utility function to act as poor man's nmap command
-# Use with _net_nmap hostname.
-_net_nmap() {
+# Use with _network_nmap hostname.
+function _network_nmap {
     local tgt_host="${1:-127.0.0.1}"
     for tgt_port in {1..1023}; do
-        (_net_can_reach "${tgt_host}" "${tgt_port}") >/dev/null 2>&1 && echo "$tgt_port open" || echo "$tgt_port closed"
+        (_network_can_reach "${tgt_host}" "${tgt_port}") >/dev/null 2>&1 && echo "$tgt_port open" || echo "$tgt_port closed"
     done
 }

@@ -26,12 +26,11 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,9 +40,9 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
 # Trap  abnormal termination
@@ -54,7 +53,7 @@ trap cleanup 1 2 3 15
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] [-d <DIR>]
 
@@ -73,13 +72,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-dump_global_to_path() {
+function dump_global_to_path {
 
     local dump_path=$1
     local resources=
@@ -101,7 +100,7 @@ dump_global_to_path() {
 }
 
 
-dump_regional_to_path() {
+function dump_regional_to_path {
 
     local aws_region=$1
     local dump_path=$2
@@ -137,6 +136,8 @@ output_dir="${2:-$(pwd)}"
 ##############################################################################
 # Main Script
 ##############################################################################
+
+_assert_is_authenticated
 
 _log "$LINENO" "Checking for terraforming support"
 which terraforming > /dev/null 2> /dev/null

@@ -1,0 +1,14 @@
+#cmd: ec2 describe-transit-gateway-attachments
+#sort: TransitGatewayOwnerId,TransitGatewayId,State
+
+.TransitGatewayAttachments[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Association // {})
+)
++
+(
+    (.Tags // [])|from_entries
+)

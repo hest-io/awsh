@@ -1,0 +1,20 @@
+#foreach: acm list-certificates | jq -r '.CertificateSummaryList[] | .CertificateArn'
+#cmd: acm describe-certificate --certificate-arn "${item}"
+#sort: DomainName,NotAfter
+#geo: regional
+
+.[] | .Certificate | {
+    CertificateArn: (.CertificateArn | split(":") | last),
+    Status,
+    NotBefore: (.NotBefore | todateiso8601),
+    NotAfter: (.NotAfter | todateiso8601),
+    ImportedAt: (.ImportedAt | todateiso8601),
+    InUseByCount: (.InUseBy|length),
+    CreatedAt: (.CreatedAt | todateiso8601),
+    KeyAlgorithm,
+    Issuer,
+    Type,
+    DomainName,
+    AlternativeNames: (.SubjectAlternativeNames|join(", ")),
+}
+

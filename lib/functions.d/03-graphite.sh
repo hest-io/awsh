@@ -1,12 +1,14 @@
+#!/usr/bin/env bash
+
 # Simple function to send metrics to Graphite based on the awesome example from
 # https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
 # Original Author: Alexander Fortin <alexander.fortin@gmail.com>
 
 # Usage _graphite_send_raw 'my_metric 100 [timestamp]'
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
-_graphite_send_raw() {
+function _graphite_send_raw {
 
-    _ensure_is_bash
+    _system_ensure_is_bash
 
     local current_timestamp="$(date +%s)"
     local metric_timestamp="${3:-$current_timestamp}"
@@ -41,9 +43,9 @@ _graphite_send_raw() {
 
 # Usage _graphite_pipe_raw '<filename>' or cat <filename> | _graphite_pipe_raw
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
-_graphite_pipe_raw() {
+function _graphite_pipe_raw {
 
-    _ensure_is_bash
+    _system_ensure_is_bash
 
     local host="${GRAPHITE_HOST:-127.0.0.1}"
     local port="${GRAPHITE_PORT:-2003}"

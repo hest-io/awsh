@@ -1,0 +1,15 @@
+#foreach: ec2 describe-transit-gateway-route-tables  | jq -r '.TransitGatewayRouteTables[] | .TransitGatewayRouteTableId'
+#cmd: ec2 search-transit-gateway-routes --filters '[{"Name":"route-search.subnet-of-match","Values":["0.0.0.0/0","::/0"]}]' --transit-gateway-route-table-id "${item}"
+#enrich: jq --arg item "${item}" '(.Routes[] | .TransitGatewayRouteTableId) = $item'
+#sort: TransitGatewayRouteTableId,TransitGatewayAttachmentId,DestinationCidrBlock
+
+.[] | .Routes[] | {
+    TransitGatewayRouteTableId,
+    TransitGatewayAttachmentId: ((.TransitGatewayAttachments[0] |.TransitGatewayAttachmentId) // null),
+    ResourceType: ((.TransitGatewayAttachments[0] |.ResourceType) // null),
+    ResourceId: ((.TransitGatewayAttachments[0] |.ResourceId) // null),
+    DestinationCidrBlock,
+    State,
+    Type
+}
+

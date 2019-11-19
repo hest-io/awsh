@@ -26,12 +26,11 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,15 +40,15 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
 # Trap  abnormal termination
 trap cleanup 1 2 3 15
 
-FILTER_ROOT="${PROJECT_ROOT}/etc/filters.d"
+FILTER_ROOT="${AWSH_ROOT}/etc/filters.d"
 AWSCLI_CMD=aws
 AWSCLI_DEFAULT_ARGS="--output=json"
 
@@ -58,7 +57,7 @@ AWSCLI_DEFAULT_ARGS="--output=json"
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [--help] <resource> [-f <FORMAT>]
        $CONST_SCRIPT_NAME ec2
@@ -74,13 +73,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-show_completions() {
+function show_completions {
 
     SUBCOMMANDS="$(find ${AWSH_ROOT}/etc/filters.d/ -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
     VS_SUBCOMMANDS=( $SUBCOMMANDS )
@@ -93,20 +92,21 @@ show_completions() {
 }
 
 
-_generate() {
+function _generate {
+    _screen_note "This filter uses a generator. Please be patient while we collect data"
     for item in $(eval "aws ${output_generator}"); do
         eval "${AWSCLI_CMD} ${awscli_cmd_args[@]} ${AWSCLI_DEFAULT_ARGS} | ${output_enricher[@]}"
     done | jq --monochrome-output -s '.'
 }
 
 
-_filter() {
+function _filter {
     jq --monochrome-output --from-file "${filter_path}" \
         | jq --monochrome-output -s '.'
 }
 
 
-_discard() {
+function _discard {
     saveIFS=$IFS
     IFS=','
     local discard_filter=". "
@@ -121,28 +121,26 @@ _discard() {
 }
 
 
-_tabulate() {
+function _tabulate {
     cat \
         | awsh-json2orderedtable -s "${output_sort_keys}" ${vs_table_helper_args[*]}
 }
 
 
-_tidy() {
+function _tidy {
     ${output_tidy[@]}
 }
 
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_usage
     exit 0
 fi
 
 
 # show lst of commands
-if [ "$1" == '-c' ] || [ "$1" == '--commands' ] || [ "$1" == 'commands' ]
-then
+if [ "$1" == '-c' ] || [ "$1" == '--commands' ] || [ "$1" == 'commands' ]; then
     show_completions
     exit 0
 fi
@@ -156,6 +154,8 @@ vs_table_helper_args=("${vs_args[@]:1}")
 # Main Script
 ##############################################################################
 
+_assert_is_authenticated
+
 filter_path=
 
 # Check for a valid filter in both AWSH and in the users' config
@@ -168,7 +168,8 @@ if [ -f "${HOME}/.awsh/filters/${resource_name}.jqf" ]; then
 fi
 
 if [ -z ${filter_path} ]; then
-    _log "$LINENO" "No filter defined for that resource. Check your available filters"
+    _screen_warn "No filter defined for that resource. These are the filters we currently have access to;"
+    show_completions | column
     exit 1
 fi
 

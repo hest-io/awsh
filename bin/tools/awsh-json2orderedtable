@@ -15,7 +15,6 @@ Options:
                         orgtbl, rst, mediawiki, latex [default: simple]
     -s, --sort=<sort>   A CSV string specifying the columns from the data to
                         use in sorting the results. [default: ]
-    -t, --transpose     Transpose the Rows/Cols of the generated table
     -n, --numbered      Number the rows [default: False]
     -h, --help          Show this help message and exit
     --debug             Show more verbose logging
@@ -105,7 +104,7 @@ def main(options):
 
         # Check if we have any data
         if len(j) < 1:
-            _log.error('No data found for table')
+            _log.error('No data found to process. Did the query generate any data?')
             clean_up(-1)
 
         # Attempt to sort the data using provided sort keys with fallback to
@@ -122,11 +121,6 @@ def main(options):
         sorted_dict = multikeysort(j, sort_keys)
 
         if len(sorted_dict) > 0:
-            if options['--transpose'] is True:
-                import pandas as pd
-                df = pd.DataFrame(sorted_dict)
-                sorted_dict = df.T
-                options['--numbered'] = True
             print(tabulate(sorted_dict, headers='keys', tablefmt=options['--format'], showindex=options['--numbered']))
         else:
             _log.error('No keys found in JSON for table data')

@@ -33,11 +33,9 @@ MAX_AGE=300 # 5 mins
 [ -d $CACHE_ROOT ] || mkdir -p /tmp/awshcache
 
 # hash last modified dates of any files
-for arg in "$@"
-do
-  if [ -f $arg ]
-  then
-    KEY+=`date -r "$arg" +\ %s`
+for arg in "$@"; do
+  if [ -f "${arg}" ]; then
+    KEY+="$(date -r "${arg}" +\ %s)"
   fi
 done
 
@@ -45,13 +43,13 @@ done
 cache_file="${CACHE_ROOT}/command_cache.$(echo -n "$KEY" | md5sum | awk '{print $1}')"
 
 # If we have a cache check it's age and if not aged out then use it.
-if [ -f ${cache_file} ]; then
-    cache_age=$(( $(date +%s) - $(stat -L --format %Y ${cache_file}) ))
+if [[ -f "${cache_file}" ]]; then
+    cache_age=$(( $(date +%s) - $(stat -L --format %Y "${cache_file}") ))
     if [ $cache_age -lt $MAX_AGE ]; then
-        cat ${cache_file}
+        cat "${cache_file}"
     else
-        $@ | tee ${cache_file}
+        $@ | tee "${cache_file}"
     fi
 else
-    $@ | tee ${cache_file}
+    $@ | tee "${cache_file}"
 fi

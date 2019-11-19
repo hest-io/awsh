@@ -1,0 +1,15 @@
+#cmd: ec2 describe-transit-gateways
+#sort: OwnerId,State
+
+.TransitGateways[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Options // {})
+)
++
+(
+    (.Tags // [])|from_entries
+)
+| del(.TransitGatewayArn)

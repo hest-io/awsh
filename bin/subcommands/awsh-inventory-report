@@ -26,12 +26,11 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,9 +40,9 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
 # Trap  abnormal termination
@@ -56,7 +55,7 @@ output_format="simple"
 # Functions
 ##############################################################################
 
-show_usage() {
+function show_usage {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME [-h] [-f <FORMAT>] [-d <OUTPUT-DIR>]
 
@@ -69,13 +68,13 @@ EOF
 }
 
 
-cleanup() {
+function cleanup {
     echo "Exiting."
     exit 1
 }
 
 
-repeat() {
+function repeat {
     local input="$1"
     local count="$2"
     myString="$(printf "%${count}s")"
@@ -83,27 +82,27 @@ repeat() {
 }
 
 
-title() {
+function title {
     echo "$(echo "${1}" | tr '[:lower:]' '[:upper:]' | sed -e "s/\-/ /g" -e "s/\_/ /g")"
 }
 
 
 # Format specific header
-fs_page_header() {
+function fs_page_header {
     local fs_header="${AWSH_ROOT}/etc/report.d/${output_format}/page_header"
     [ -f "${fs_header}" ] && . "${fs_header}"
 }
 
 
 # Format specific footer
-fs_page_footer() {
+function fs_page_footer {
     local fs_footer="${AWSH_ROOT}/etc/report.d/${output_format}/page_footer"
     [ -f "${fs_footer}" ] && . "${fs_footer}"
 }
 
 
 # Format specific headings
-fs_heading() {
+function fs_heading {
     local level=$1
     local val="${2}"
     case ${output_format} in
@@ -149,6 +148,8 @@ done
 ##############################################################################
 # Main Script
 ##############################################################################
+
+_assert_is_authenticated
 
 content_buffer="$(mktemp)"
 resource_filter="$(mktemp)"

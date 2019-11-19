@@ -26,12 +26,11 @@ CONST_OS_VERSION=$(uname -r)
 CONST_SYSTEM_TYPE=$(uname -m)
 CONST_SCRIPT_NAME=${0##*/}
 
-# The PROJECT_ROOT is TWO level up from where the scripts run in the
-# 'bin/subcommands' directory
-PROJECT_ROOT=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../" && pwd )
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
 
 # Load the Frameverk
-. ${PROJECT_ROOT}/etc/awshrc
+source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
 TTY_OUTPUT_ENABLED=$TRUE
@@ -41,16 +40,16 @@ EVENT_OUTPUT_ENABLED=$TRUE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default log file
-DEFAULT_OUT="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}.log"
+DEFAULT_OUT="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}.log"
 # Define somewhere for specific log messages to go
-EVENT_LOG="${PROJECT_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
+EVENT_LOG="${AWSH_ROOT}/log/${CONST_SCRIPT_NAME}_events.log"
 export DEFAULT_OUT EVENT_LOG
 
 ##############################################################################
 # Functions
 ##############################################################################
 
-ip_from_instance_name() {
+function ip_from_instance_name {
 	local target="$1"
 	_log "$LINENO" "Attempting to resolve target ${target}"
 
@@ -76,7 +75,7 @@ ip_from_instance_name() {
 
 }
 
-show_help() {
+function show_help {
     cat <<EOF
 usage: $CONST_SCRIPT_NAME <target> [options]
        $CONST_SCRIPT_NAME ( -h | --help )
@@ -90,18 +89,18 @@ EOF
 
 
 # Show most common commands if no args are given
-if { [ -z "$1" ] && [ -t 0 ] ; }
-then
+if { [ -z "$1" ] && [ -t 0 ] ; }; then
     show_help
     exit 0
 fi
 
 # show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]; then
     show_help
     exit 0
 fi
+
+_assert_is_authenticated
 
 target="$(echo "$1" | sed -e 's/\(.*@\)//g')"
 check_ip="$(echo "$target" | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b")"
