@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Based on the example given in http://stackoverflow.com/a/34809183. It rips out
-# the first two lines in the stream and passws the rest wholesale to grep
+# the first two lines in the stream and passes the rest wholesale to grep
 
 IFS='' read -r JUST1LIINE
 printf "%s\n" "$JUST1LIINE"

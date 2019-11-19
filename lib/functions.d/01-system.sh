@@ -25,7 +25,6 @@ function _system_ensure_is_bash {
     if [[ -z "$BASH_VERSION" ]]; then
         echo ''
         echo 'You did not use a BASH shell and tried to use something that needs it.'
-        echo 'https://www.youtube.com/watch?feature=player_detailpage&v=bWXazVhlyxQ#t=89'
         echo ''
     fi
 

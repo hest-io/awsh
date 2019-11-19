@@ -138,7 +138,7 @@ def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, 
                 )
 
     except Exception as e:
-        _log.error('An unhandled Exception occured')
+        _log.error('An unhandled Exception occurred')
 
     return token
 
@@ -305,7 +305,7 @@ try:
     assertion = ''
 
     # Look for the SAMLResponse attribute of the input tag (determined by
-    # analyzing the debug print lines above)
+    # analysing the debug print lines above)
     for inputtag in soup.find_all('input'):
         if(inputtag.get('name') == 'SAMLResponse'):
             _log.debug('Found SAMLResponse')

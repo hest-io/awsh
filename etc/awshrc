@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ ! -n "$BASH_VERSION" ]; then
-    echo "Use a BASH Shell. You will regret this. Dipshit mode enabled"
+    echo "Use a BASH Shell. You will regret this. Basic mode enabled"
 fi
 
 ##############################################################################
@@ -19,7 +19,7 @@ CONST_SCRIPT_CALLER="${BASH_SOURCE[0]}"
 TRUE=0
 FALSE=1
 
-# These logging flasg should be re-set in the main script but are defined here
+# These logging flags should be re-set in the main script but are defined here
 # to provide defaults
 # Current logging config
 TTY_OUTPUT_ENABLED=$FALSE

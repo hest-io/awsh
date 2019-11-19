@@ -201,7 +201,7 @@ function _aws_login {
 
         # Ensure we have at least one identity to offer before proceeding
         if [ ! ${#options[@]} -ge 1 ]; then
-            _log "$LINENO" "No identities currently configured. RTFM."
+            _log "$LINENO" "No identities currently configured. Use 'awsh identity-create' to create an identity."
             return 1
         fi
 

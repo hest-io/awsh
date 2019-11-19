@@ -31,7 +31,7 @@ CONST_SCRIPT_NAME=${0##*/}
 # Default for AWSH_ROOT if unset
 : "${AWSH_ROOT:='/opt/awsh'}"
 
-# Load the Frameverk
+# Load the Framework
 source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
@@ -63,7 +63,7 @@ Simple utility script to claim and then release available Private IP addresses
 from the specified subnet-id by allocating and then deleting an ENI in the same
 subnet
 
-Useful if you need to determine which Private VPC adddresses can be used as
+Useful if you need to determine which Private VPC addresses can be used as
 reserved DHCP allocations (aka static private VPC IP on AWS)
 
 EOF

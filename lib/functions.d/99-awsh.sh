@@ -39,8 +39,8 @@ The most commonly used commands are:
   whoami            Lists information about the current API user
   list              Lists many AWS resource types using JQ based filters
   vpc-viz           Creates diagrams and graphs of your VPC resources
-  scp               Wrapper for SCP configured to use loaded AWS idemtity
-  ssh               Wrapper for SSH configured to use loaded AWS idemtity
+  scp               Wrapper for SCP configured to use loaded AWS identity
+  ssh               Wrapper for SSH configured to use loaded AWS identity
 
 'awsh -h' lists available subcommands
 EOF

@@ -2,7 +2,6 @@
 
 # Simple function to send metrics to StatsD based on the awesome example from
 # https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
-# Original Author: Alexander Fortin <alexander.fortin@gmail.com>
 
 # Usage _statsd_send_raw 'my_metric:100|g'
 # Optionally set STATSD_HOST and STATSD_PORT variables
@@ -16,7 +15,7 @@ function _statsd_send_raw {
         exit 1
     fi
     _log "$LINENO" "Sending metric ${1} to StatsD @ ${host}:${port}"
-    # Setup UDP socket with statsd server
+    # Set up UDP socket with statsd server
     exec 3<> /dev/udp/$host/$port
     # Send data
     echo "$1" >&3

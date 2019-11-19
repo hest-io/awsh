@@ -2,7 +2,6 @@
 
 # Simple function to send metrics to Graphite based on the awesome example from
 # https://github.com/etsy/statsd/blob/master/examples/statsd-client.sh
-# Original Author: Alexander Fortin <alexander.fortin@gmail.com>
 
 # Usage _graphite_send_raw 'my_metric 100 [timestamp]'
 # Optionally set GRAPHITE_HOST and GRAPHITE_PORT variables
@@ -24,7 +23,7 @@ function _graphite_send_raw {
     if [ $? -eq 0 ]; then
 
         _log "$LINENO" "Sending metric ${1}=${2} [${metric_timestamp}] to Graphite @ ${host}:${port}"
-        # Setup TCP socket with statsd server
+        # Set up TCP socket with statsd server
         exec 4<> /dev/tcp/$host/$port
         # Send data
         echo "${1} ${2} ${metric_timestamp}" >&4
@@ -59,7 +58,7 @@ function _graphite_pipe_raw {
         # of a pipeline and read from STDIN
         _log "$LINENO" "Sending raw input to Graphite @ ${host}:${port}"
 
-        # Setup TCP socket with statsd server
+        # Set up TCP socket with statsd server
         exec 4<> /dev/tcp/$host/$port
         # Send data from file if we have one of STDIN if not
         if [ -z $1 ]; then

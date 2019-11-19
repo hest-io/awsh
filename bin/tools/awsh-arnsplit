@@ -2,7 +2,7 @@
 
 """
 Simple utility to split a string containing an ARN into it's component parts
-based on the Gist from https://gist.github.com/gene1wood usin the AN namespace
+based on the Gist from https://gist.github.com/gene1wood using the AN namespace
 defined by Amazon
 
 arn:partition:service:region:account-id:resource

@@ -76,7 +76,7 @@ colorama_init()
 ###############################################################################
 
 class IterRegistry(type):
-    """Helper class for iteration through objects's properties"""
+    """Helper class for iteration through object properties"""
 
     def __iter__(self, cls):
         return iter(cls._registry)

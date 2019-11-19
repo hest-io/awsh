@@ -29,7 +29,7 @@ CONST_SCRIPT_NAME=${0##*/}
 # Default for AWSH_ROOT if unset
 : "${AWSH_ROOT:='/opt/awsh'}"
 
-# Load the Frameverk
+# Load the Framework
 source ${AWSH_ROOT}/etc/awshrc
 
 # Current logging config
@@ -84,7 +84,7 @@ id_default_region="${3:-'eu-west-1'}"
 # Main Script
 ##############################################################################
 
-echo "AWSH-ID - Identity Name (eg. PERSONAL-ROOT-jeff-eu-west-1, PERSONAL-IAM-jeff-us-eest-1) "
+echo "AWSH-ID - Identity Name (eg. PERSONAL-ROOT-jeff-eu-west-1, PERSONAL-IAM-jeff-us-east-1) "
 read -p "Name: " id_name
 
 if [ ! -d "$HOME/.awsh/identities/${id_name}" ]; then

@@ -28,7 +28,7 @@ function _time_from_epoch {
 }
 
 
-# Simple function to convert to epoch timestamp from a date strin
+# Simple function to convert to epoch timestamp from a date string
 function _time_to_epoch {
 
     local ts_time="${1:-now}"
