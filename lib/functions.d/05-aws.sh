@@ -119,7 +119,8 @@ function _aws_load_krb5formauth_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
-    local aws_role_idx="${2}"
+    local aws_role_idx=${2}
+    : "${aws_role_idx:=-1}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -136,14 +137,15 @@ function _aws_load_krb5formauth_credentials {
 
     _screen_note  "Kerberos IDP Account Detected..."
     _screen_note  "Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s"
+        
     ${AWSH_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
-        "${region}" \
-        "${aws_idp_url}" \
-        "${identity_path}/idp_params.json" \
-        "${aws_idp_principal}" \
-        "${AWS_CONFIG_FILE}" \
-        "${REQUESTED_TOKEN_DURATION}" \
-        "${aws_role_idx}"
+        --region "${region}" \
+        --idp_url "${aws_idp_url}" \
+        --params "${identity_path}/idp_params.json" \
+        --principal "${aws_idp_principal}" \
+        --creds_cache "${AWS_CONFIG_FILE}" \
+        --token_duration "${REQUESTED_TOKEN_DURATION}" \
+        --role_index ${aws_role_idx}
 
     [ $? -eq 0 ] || { echo "ERROR: IDP Token generation failed" && return ;}
 
