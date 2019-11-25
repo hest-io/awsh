@@ -112,7 +112,7 @@ function awsh {
         ;;
 
         login)
-            _aws_login
+            _aws_login "${@}"
         ;;
 
         logout|session-purge)

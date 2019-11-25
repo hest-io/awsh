@@ -10,7 +10,7 @@ workstation. You can test this with
     'klist'            - List existing Kerberos tokens
 
 Usage:
-    awsh-token-krb5formauth-create <aws_region> <saml_idp_url> <idp_params> <principal> <creds_file> [<token_duration>] [ options ]
+    awsh-token-krb5formauth-create <aws_region> <saml_idp_url> <idp_params> <principal> <creds_file> [<token_duration>] [<role_index>] [ options ]
     awsh-token-krb5formauth-create ( -h | --help )
 
 Arguments:
@@ -25,6 +25,8 @@ Arguments:
   creds_file        The filename to store credentials in if successful
   token_duration    The duration in seconds that a requested token is valid for
                     from the time of successful authentication [default: 14400]
+  role_index        A predefined numeric entry to select from the list of available
+                    IAM Roles [default: -1]
 
 Options:
   --sslverify       Whether or not to validate the SSL cert from the SAML URL.
@@ -389,12 +391,15 @@ try:
         # Sort the data
         sorted_menu_dict = multikeysort(user_role_table, ['AWS Account', 'Role Name'])
         sorted_internal_dict = multikeysort(internal_role_table, ['AWS Account', 'Role Name'])
-        print("Please choose the role you would like to assume:")
-        print("")
-        print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
-
-        print "Selection: ",
-        selectedroleindex = raw_input()
+        
+        if int(options['<role_index>']) > 0:
+            selectedroleindex = int(options['<role_index>'])
+        else:        
+            print("Please choose the role you would like to assume:")
+            print("")
+            print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
+            print "Selection: ",
+            selectedroleindex = raw_input()
 
         # Basic sanity check of input
         if int(selectedroleindex) > (len(awsroles) - 1):

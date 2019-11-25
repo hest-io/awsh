@@ -119,6 +119,7 @@ function _aws_load_krb5formauth_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
+    local aws_role_idx="${2}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -141,7 +142,8 @@ function _aws_load_krb5formauth_credentials {
         "${identity_path}/idp_params.json" \
         "${aws_idp_principal}" \
         "${AWS_CONFIG_FILE}" \
-        "${REQUESTED_TOKEN_DURATION}"
+        "${REQUESTED_TOKEN_DURATION}" \
+        "${aws_role_idx}"
 
     [ $? -eq 0 ] || { echo "ERROR: IDP Token generation failed" && return ;}
 
@@ -165,6 +167,7 @@ function _aws_load_krb5formauth_credentials {
 function _aws_login {
 
     local aws_id_name="$1"
+    local aws_role_idx="$2"
 
     # Unset any AWS_ env variables
     local aws_vars="$(env | grep '^AWS_')"
@@ -254,7 +257,7 @@ function _aws_login {
         _aws_load_mfaauth_credentials "${AWS_CONFIG_FILE}"
     elif grep -q "aws_idp" "$AWS_CONFIG_FILE"; then
         # Check if we have IDP to process
-        _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}"
+        _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}" "${aws_role_idx}"
     else
         # If we haven't matched one of the earlier patterns
         _aws_load_basic_credentials "${AWS_CONFIG_FILE}"
