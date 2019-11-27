@@ -133,7 +133,7 @@ function _aws_load_krb5formauth_credentials {
     # Only attempt Kerberos based token generation if we have a valid kerberos
     # token at present
     active_tokens="$(klist 2>/dev/null)"
-    [ $? -eq 0 ] || { echo "ERROR: No AD/Kerberos token found. Start with kinit to authenticate against your directory first" && return ;}
+    [ $? -eq 0 ] || { _screen_error "No AD/Kerberos token found. Start with kinit to authenticate against your directory first" && return 1;}
 
     _screen_note  "Kerberos IDP Account Detected..."
     _screen_note  "Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s"
@@ -147,7 +147,7 @@ function _aws_load_krb5formauth_credentials {
         --token_duration "${REQUESTED_TOKEN_DURATION}" \
         --role_index ${aws_role_idx}
 
-    [ $? -eq 0 ] || { echo "ERROR: IDP Token generation failed" && return ;}
+    [ $? -eq 0 ] || { _screen_error "IDP Token generation failed. Check that both the IDP and the AWS Provider are configured" && return 1 ;}
 
     AWS_ACCESS_KEY_ID="$(grep -h aws_access_key_id "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SECRET_ACCESS_KEY="$(grep -h aws_secret_access_key "$AWS_CONFIG_FILE" | awk '{print $2}')"
@@ -251,8 +251,8 @@ function _aws_login {
     AWS_ID_NAME="${identity}"
 
     # Ensure the files we need actually exist
-    [ ! -f $AWS_SSH_KEY ] && echo "ERROR: No PrivateKey file found $AWS_SSH_KEY" && return
-    [ ! -f $AWS_CONFIG_FILE ] && echo "ERROR: No credentials file found $AWS_CONFIG_FILE" && return
+    [ ! -f $AWS_SSH_KEY ] && _screen_error "No PrivateKey file found $AWS_SSH_KEY" && return 1
+    [ ! -f $AWS_CONFIG_FILE ] && _screen_error "No credentials file found $AWS_CONFIG_FILE" && return 1
 
     if grep -q "aws_mfa" "$AWS_CONFIG_FILE"; then
         # Check if we have MFA to process
@@ -266,27 +266,28 @@ function _aws_login {
     fi
 
     # Check to determine if we have a valid set of credentials for use
-    { [ -z $AWS_ACCESS_KEY_ID ] || [ -z $AWS_SECRET_ACCESS_KEY ]; } && { echo "ERROR: Valid credentials not found in $AWS_CONFIG_FILE. Token generation failed" && return;}
+    if _aws_is_authenticated ; then
+        _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
+        _screen_note "AWS_SSH_KEY............ $AWS_SSH_KEY"
+        _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
+        _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
+        _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
 
-    _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
-    _screen_note "AWS_SSH_KEY............ $AWS_SSH_KEY"
-    _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
-    _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
-    _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
+        _aws_load_account_metadata
+        if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
+            AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        fi
 
-    _aws_load_account_metadata
-    if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
-        AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        export AWS_SSH_KEY AWS_ID_NAME
+        export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
+        export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
+
+        # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
+        # variables that are detected and used
+        unset AWS_CONFIG_FILE
+        return 0
     fi
-
-    export AWS_SSH_KEY AWS_ID_NAME
-    export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
-
-    # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
-    # variables that are detected and used
-    unset AWS_CONFIG_FILE
-
+    return 1
 }
 
 
