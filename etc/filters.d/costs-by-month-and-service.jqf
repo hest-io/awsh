@@ -1,0 +1,21 @@
+#cmd: ce get-cost-and-usage --time-period Start=$(date +"%Y-%m-01" --date "$(date +'%Y-%m-01') - 6 month"),End=$(date +"%Y-%m-%d" --date 'today') --granularity MONTHLY --metrics "BlendedCost" "UnblendedCost" "UsageQuantity" --group-by Type=DIMENSION,Key=SERVICE
+#sort: TimePeriodStart,TimePeriodEnd,Service
+
+(
+    .ResultsByTime[] | .Groups[] as $groups | {
+        TimePeriodStart: .TimePeriod.Start,
+        TimePeriodEnd: .TimePeriod.End,
+    }
+    +
+    (
+    $groups | select(.Metrics.BlendedCost.Amount >= "0") | {
+        Service: .Keys[0],
+        BlendedCost: (.Metrics.BlendedCost.Amount | tonumber | round ),
+        BlendedCostUnit: (.Metrics.BlendedCost.Unit),
+        UnblendedCost: (.Metrics.UnblendedCost.Amount | tonumber | round ),
+        UnblendedCostUnit: (.Metrics.UnblendedCost.Unit),
+        UsageQuantity: (.Metrics.UsageQuantity.Amount | tonumber | round ),
+        UsageQuantityUnit: (.Metrics.UsageQuantity.Unit),
+    }
+    )
+)
