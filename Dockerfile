@@ -1,7 +1,7 @@
 ###############################################################################
 # AWSH Container - Vanilla AWSH Toolset
 ###############################################################################
-FROM alpine:3.7
+FROM alpine:3.10
 MAINTAINER hugh.mooney@hest.io
 
 ###############################################################################
@@ -25,13 +25,10 @@ ENV RUNTIME_PACKAGES \
   sshpass \
   git \
   python \
-  py-boto \
   py-dateutil \
   py-httplib2 \
-  py-jinja2 \
   py-paramiko \
   py-pip \
-  py-yaml \
   ncurses \
   util-linux \
   util-linux-bash-completion \
