@@ -49,8 +49,8 @@ __awstoken_valid_next_sep="$(_screen_encode_color ${__dark_green} ${__awsh_regio
 __awstoken_expired_segment="$(_screen_encode_color ${__red} ${__awsh_brand_fg})"
 __awstoken_expired_next_sep="$(_screen_encode_color ${__red} ${__awsh_region_bg})"
 
-__awstoken_lowtime_segment="$(_screen_encode_color ${__yellow} ${__awsh_brand_fg})"
-__awstoken_lowtime_next_sep="$(_screen_encode_color ${__yellow} ${__awsh_region_bg})"
+__awstoken_lowtime_segment="$(_screen_encode_color ${__dark_orange} ${__awsh_brand_fg})"
+__awstoken_lowtime_next_sep="$(_screen_encode_color ${__dark_orange} ${__awsh_region_bg})"
 
 
 
@@ -92,7 +92,7 @@ function _cli_get_segment_aws_token_expiry {
             local segment_style="${__awstoken_valid_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awstoken_valid_segment}"
         elif [[ ${delta} -gt 0 ]]; then
             local segment_value="$(date -d @$(( $(date -d "$dt_expiry" +%s) - $(date -d "$dt_now" +%s) )) -u +'%H:%M:%S')"
-            local segment_style="${__awstoken_lowtime_segment}${_SEPARATOR_RIGHT_BOLD}${__awstoken_valid_segment}"
+            local segment_style="${__awstoken_lowtime_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awstoken_lowtime_segment}"
         else
             local segment_value="EXPIRED"
             local segment_style="${__awstoken_expired_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awstoken_expired_segment}"
