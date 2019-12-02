@@ -1,0 +1,9 @@
+#cmd: ec2 describe-prefix-lists
+#sort: PrefixListName
+
+.PrefixLists[] | {
+    PrefixListName,
+    Cidrs: (.Cidrs? | join(", ")),
+    PrefixListId
+}
+
