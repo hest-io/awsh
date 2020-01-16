@@ -14,7 +14,7 @@ EOF
 function _awsh_show_completions {
 
     # Variable setup
-    local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
+    local DEFAULT_OUT="${HOME}/.awsh/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find ${SUBCOMMAND_ROOT} -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
     local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' 'creds')
@@ -74,7 +74,7 @@ function _awsh_list_subcommands {
 function awsh {
 
     # Variable setup
-    local DEFAULT_OUT="${AWSH_ROOT}/log/awsh-cli.log"
+    local DEFAULT_OUT="${HOME}/.awsh/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find $SUBCOMMAND_ROOT -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
 
