@@ -12,6 +12,7 @@ services:
         http_proxy: "${http_proxy}"
         https_proxy: "${https_proxy}"
     hostname: awsh
+    image: "awsh:local"
     network_mode: "host"
     volumes:
       - ${HOME}/.awsh:/home/awsh/.awsh
@@ -26,3 +27,4 @@ services:
       https_proxy: "${https_proxy}"
       no_proxy: "${no_proxy}"
       NO_PROXY: "${no_proxy}"
+      KRB5CCNAME: "${KRB5CCNAME}"

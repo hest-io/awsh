@@ -373,7 +373,7 @@ function _aws_logout {
 
 
 function _aws_session_save {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-${USER}"
     env \
         | grep '^AWS_' \
         | xargs -i echo "export {}" \
@@ -383,7 +383,7 @@ function _aws_session_save {
 
 
 function _aws_session_load {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-${USER}"
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
     else

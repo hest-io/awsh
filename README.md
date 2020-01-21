@@ -69,5 +69,50 @@ This should make it easier for you to use the latest version and make it easier 
         -e "http_proxy=${http_proxy}" \
         -e "https_proxy=${https_proxy}" \
         -e "no_proxy=${no_proxy}" \
+        -e "KRB5CCNAME=${KRB5CCNAME}" \
         hestio/awsh
+    ```
+
+### Create a wrapper script to allow AWSH to be used as a Shell
+
+- Create the wrapper script `/usr/local/bin/awsh`
+
+    ```bash
+    #!/bin/bash
+
+    PUID=$(id -u)
+    PGID=$(id -g)
+
+    [ -d ${HOME}/.awsh ] || mkdir -p ${HOME}/.awsh
+
+    docker run \
+        -it \
+        --rm \
+        --network=host \
+        --user ${PUID}:${PGID} \
+        -v ${HOME}/.awsh:/home/awsh/.awsh \
+        -v /etc/krb5.conf:/etc/krb5.conf \
+        -v /etc/krb5.conf.d/:/etc/krb5.conf.d/ \
+        -v ${HOME}/workspace:/home/awsh/workspace \
+        -v /tmp:/tmp \
+        -e "HOME=/home/awsh" \
+        -e "PUID=${PUID}" \
+        -e "PGID=${PGID}" \
+        -e "http_proxy=${http_proxy}" \
+        -e "https_proxy=${https_proxy}" \
+        -e "no_proxy=${no_proxy}" \
+        -e "KRB5CCNAME=${KRB5CCNAME}" \
+        hestio/awsh
+    ```
+
+- Make the wrapper executable
+
+    ```console
+    sudo chmod a+x /usr/local/bin/awsh
+    ```
+
+- Start the wrapper script normally
+
+    ```console
+    awsh
     ```
