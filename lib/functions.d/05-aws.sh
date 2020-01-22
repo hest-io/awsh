@@ -278,6 +278,10 @@ function _aws_login {
             AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
         fi
 
+        # Add user id info to name
+        AWS_ID_PATH="${AWS_ID_NAME}/$(awsh whoami | tail -1 | awk '{print $3}' | awsh-arnchomp)"
+        AWS_ID_NAME="${AWS_ID_PATH}"
+
         export AWS_SSH_KEY AWS_ID_NAME
         export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
         export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
@@ -364,16 +368,20 @@ function _aws_show_credentials {
 
 
 function _aws_logout {
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     env \
         | grep '^AWS_' \
         | awk -F'=' '{print $1}' \
         | xargs -i echo 'unset {}' > /tmp/aws-session-purge
     source /tmp/aws-session-purge
+    if [[ -f "${CREDENTIALS_CACHE}" ]]; then
+        rm -f "${CREDENTIALS_CACHE}"
+    fi
 }
 
 
 function _aws_session_save {
-    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-${USER}"
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     env \
         | grep '^AWS_' \
         | xargs -i echo "export {}" \
@@ -383,11 +391,9 @@ function _aws_session_save {
 
 
 function _aws_session_load {
-    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-${USER}"
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
-    else
-        _
     fi
 }
 

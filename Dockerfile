@@ -12,7 +12,6 @@ ARG HTTPS_PROXY="${https_proxy}"
 ARG https_proxy="${https_proxy}"
 ARG no_proxy="${no_proxy}"
 ARG NO_PROXY="${NO_PROXY}"
-ARG FIXUID_ARGS="-q"
 
 ARG RUNTIME_PACKAGES="\
     bash \
@@ -46,8 +45,8 @@ ARG RUBY_RUNTIME_PACKAGES="\
 
 ARG SW_VER_TERRAFORMING="0.18.0"
 ARG SW_VER_WEBRICK="1.6.0"
+ARG SW_VER_FIXUID="0.4"
 
-ARG DL_URL_FIXUID="https://github.com/boxboat/fixuid/releases/download/v0.1/fixuid-0.1-linux-amd64.tar.gz"
 ARG AWSH_PYTHON_DEPS="/tmp/requirements.python2"
 
 ###############################################################################
@@ -64,7 +63,6 @@ ENV PATH /opt/awsh/bin:/opt/awsh/bin/tools:$PATH
 ENV AWSH_CONTAINER docker
 ENV PATCHED_FONT_IN_USE no
 ENV AWSH_VERSION_DOCKER latest
-
 ENV HTTP_PROXY "${http_proxy}"
 ENV http_proxy "${http_proxy}"
 ENV HTTPS_PROXY "${https_proxy}"
@@ -104,7 +102,7 @@ RUN \
 
 # Install fixuid
 RUN \
-    curl -SsL ${DL_URL_FIXUID} | tar -C /usr/local/bin -xzf - && \
+    curl -SsL "https://github.com/boxboat/fixuid/releases/download/v${SW_VER_FIXUID}/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz" | tar -C /usr/local/bin -xzf - && \
     chown root:root /usr/local/bin/fixuid && \
     chmod 4755 /usr/local/bin/fixuid && \
     mkdir -p /etc/fixuid
@@ -143,6 +141,6 @@ WORKDIR ${AWSH_USER_HOME}
 
 ENTRYPOINT ["fixuid"]
 
-CMD ["/bin/bash"]
+CMD ["-q", "/bin/bash"]
 
 USER ${AWSH_USER}:${AWSH_GROUP}
