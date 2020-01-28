@@ -15,33 +15,35 @@ ARG NO_PROXY="${NO_PROXY}"
 
 ARG RUNTIME_PACKAGES="\
     bash \
+    ca-certificates \
     coreutils \
     curl \
-    tar \
-    openssh-client \
-    sshpass \
     git \
-    python \
+    graphviz \
+    jq \
+    krb5 \
+    libc6-compat \
+    ncurses \
+    openssh-client \
     py-dateutil \
     py-httplib2 \
     py-paramiko \
     py-pip \
-    ncurses \
+    python \
+    shadow \
+    sshpass \
+    tar \
     util-linux \
-    util-linux-bash-completion \
-    jq \
-    krb5 \
-    ca-certificates \
-    shadow"
+    util-linux-bash-completion"
 
 ARG RUBY_RUNTIME_PACKAGES="\
     ruby \
-    ruby-dev \
+    ruby-bigdecimal \
     ruby-bundler \
-    ruby-json \
+    ruby-dev \
     ruby-irb \
-    ruby-rake \
-    ruby-bigdecimal"
+    ruby-json \
+    ruby-rake"
 
 ARG SW_VER_TERRAFORMING="0.18.0"
 ARG SW_VER_WEBRICK="1.6.0"
