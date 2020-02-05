@@ -26,7 +26,8 @@ class AWSHLog(object):
         self.cloud_handler = None
 
         AWSH_ROOT = os.getenv('AWSH_ROOT', '/tmp')
-        log_filename = '{}/log/{}.log'.format(AWSH_ROOT, self.context)
+        AWSH_LOG_ROOT = os.getenv('HOME', '/tmp')
+        log_filename = '{}/.awsh/log/{}.log'.format(AWSH_LOG_ROOT, self.context)
 
         if os.path.exists(os.path.dirname(log_filename)):
 

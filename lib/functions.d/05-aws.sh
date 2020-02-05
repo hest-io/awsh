@@ -119,6 +119,8 @@ function _aws_load_krb5formauth_credentials {
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
+    local aws_role_idx=${2}
+    : "${aws_role_idx:=-1}"
     cfg.section.default
 
     AWS_DEFAULT_REGION="${region}"
@@ -131,19 +133,21 @@ function _aws_load_krb5formauth_credentials {
     # Only attempt Kerberos based token generation if we have a valid kerberos
     # token at present
     active_tokens="$(klist 2>/dev/null)"
-    [ $? -eq 0 ] || { echo "ERROR: No AD/Kerberos token found. Start with kinit to authenticate against your directory first" && return ;}
+    [ $? -eq 0 ] || { _screen_error "No AD/Kerberos token found. Start with kinit to authenticate against your directory first" && return 1;}
 
     _screen_note  "Kerberos IDP Account Detected..."
     _screen_note  "Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s"
+        
     ${AWSH_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
-        "${region}" \
-        "${aws_idp_url}" \
-        "${identity_path}/idp_params.json" \
-        "${aws_idp_principal}" \
-        "${AWS_CONFIG_FILE}" \
-        "${REQUESTED_TOKEN_DURATION}"
+        --region "${region}" \
+        --idp_url "${aws_idp_url}" \
+        --params "${identity_path}/idp_params.json" \
+        --principal "${aws_idp_principal}" \
+        --creds_cache "${AWS_CONFIG_FILE}" \
+        --token_duration "${REQUESTED_TOKEN_DURATION}" \
+        --role_index ${aws_role_idx}
 
-    [ $? -eq 0 ] || { echo "ERROR: IDP Token generation failed" && return ;}
+    [ $? -eq 0 ] || { _screen_error "IDP Token generation failed. Check that both the IDP and the AWS Provider are configured" && return 1 ;}
 
     AWS_ACCESS_KEY_ID="$(grep -h aws_access_key_id "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SECRET_ACCESS_KEY="$(grep -h aws_secret_access_key "$AWS_CONFIG_FILE" | awk '{print $2}')"
@@ -165,6 +169,7 @@ function _aws_load_krb5formauth_credentials {
 function _aws_login {
 
     local aws_id_name="$1"
+    local aws_role_idx="$2"
 
     # Unset any AWS_ env variables
     local aws_vars="$(env | grep '^AWS_')"
@@ -246,42 +251,47 @@ function _aws_login {
     AWS_ID_NAME="${identity}"
 
     # Ensure the files we need actually exist
-    [ ! -f $AWS_SSH_KEY ] && echo "ERROR: No PrivateKey file found $AWS_SSH_KEY" && return
-    [ ! -f $AWS_CONFIG_FILE ] && echo "ERROR: No credentials file found $AWS_CONFIG_FILE" && return
+    [ ! -f $AWS_SSH_KEY ] && _screen_error "No PrivateKey file found $AWS_SSH_KEY" && return 1
+    [ ! -f $AWS_CONFIG_FILE ] && _screen_error "No credentials file found $AWS_CONFIG_FILE" && return 1
 
     if grep -q "aws_mfa" "$AWS_CONFIG_FILE"; then
         # Check if we have MFA to process
         _aws_load_mfaauth_credentials "${AWS_CONFIG_FILE}"
     elif grep -q "aws_idp" "$AWS_CONFIG_FILE"; then
         # Check if we have IDP to process
-        _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}"
+        _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}" "${aws_role_idx}"
     else
         # If we haven't matched one of the earlier patterns
         _aws_load_basic_credentials "${AWS_CONFIG_FILE}"
     fi
 
     # Check to determine if we have a valid set of credentials for use
-    { [ -z $AWS_ACCESS_KEY_ID ] || [ -z $AWS_SECRET_ACCESS_KEY ]; } && { echo "ERROR: Valid credentials not found in $AWS_CONFIG_FILE. Token generation failed" && return;}
+    if _aws_is_authenticated ; then
+        _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
+        _screen_note "AWS_SSH_KEY............ $AWS_SSH_KEY"
+        _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
+        _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
+        _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
 
-    _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
-    _screen_note "AWS_SSH_KEY............ $AWS_SSH_KEY"
-    _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
-    _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
-    _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
+        _aws_load_account_metadata
+        if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
+            AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        fi
 
-    _aws_load_account_metadata
-    if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
-        AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        # Add user id info to name
+        AWS_ID_PATH="${AWS_ID_NAME}/$(awsh whoami | tail -1 | awk '{print $3}' | awsh-arnchomp)"
+        AWS_ID_NAME="${AWS_ID_PATH}"
+
+        export AWS_SSH_KEY AWS_ID_NAME
+        export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
+        export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
+
+        # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
+        # variables that are detected and used
+        unset AWS_CONFIG_FILE
+        return 0
     fi
-
-    export AWS_SSH_KEY AWS_ID_NAME
-    export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
-
-    # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
-    # variables that are detected and used
-    unset AWS_CONFIG_FILE
-
+    return 1
 }
 
 
@@ -358,16 +368,20 @@ function _aws_show_credentials {
 
 
 function _aws_logout {
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     env \
         | grep '^AWS_' \
         | awk -F'=' '{print $1}' \
         | xargs -i echo 'unset {}' > /tmp/aws-session-purge
     source /tmp/aws-session-purge
+    if [[ -f "${CREDENTIALS_CACHE}" ]]; then
+        rm -f "${CREDENTIALS_CACHE}"
+    fi
 }
 
 
 function _aws_session_save {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     env \
         | grep '^AWS_' \
         | xargs -i echo "export {}" \
@@ -377,11 +391,9 @@ function _aws_session_save {
 
 
 function _aws_session_load {
-    local -r CREDENTIALS_CACHE='/tmp/aws-session-credentials'
+    local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
-    else
-        _
     fi
 }
 

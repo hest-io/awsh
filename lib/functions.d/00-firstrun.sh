@@ -21,8 +21,8 @@ if [[ ! -d "${AWSH_ROOT}/tmp" ]]; then
 fi
 
 # Create a log dir if none exists
-if [[ ! -d "${AWSH_ROOT}/log" ]]; then
-    mkdir -p "${AWSH_ROOT}/log"
+if [[ ! -d "${HOME}/.awsh/log" ]]; then
+    mkdir -p "${HOME}/.awsh/log"
 fi
 
 # Create an user identities dir if none exists

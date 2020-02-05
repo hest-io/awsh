@@ -9,28 +9,40 @@ workstation. You can test this with
     'kinit user@REALM' - Attempt to auth
     'klist'            - List existing Kerberos tokens
 
+
 Usage:
-    awsh-token-krb5formauth-create <aws_region> <saml_idp_url> <idp_params> <principal> <creds_file> [<token_duration>] [ options ]
+    awsh-token-krb5formauth-create --region <region> --params <params> --idp_url <idpurl> --principal <principal> --creds_cache <creds_cache> [--token_duration <token_duration>] [--role_index <role_index>] [options]
     awsh-token-krb5formauth-create ( -h | --help )
 
+
 Arguments:
-  aws_region        The AWS Region to auth against
-  idp_params        A JSON dictionary of parameters that are needed for form
-                    based authentication. A value of '<ask>' can be used to
-                    trigger reading the value at runtime from the user. A value
-                    of '<password>' can be used to trigger reading the value at
-                    runtime securely
-  saml_idp_url      The IDP/SAML URL that is used to trigger authentication
-  principal         The identity to authenticate with in the form of user@REALM
-  creds_file        The filename to store credentials in if successful
-  token_duration    The duration in seconds that a requested token is valid for
-                    from the time of successful authentication [default: 14400]
+    --region <region>   
+        The AWS Region to auth against
+    --params <params>   
+        A JSON dictionary of parameters that are needed for form based 
+        authentication. A value of '<ask>' can be used to trigger 
+        reading the value at runtime from the user. A value of 
+        '<password>' can be used to trigger reading the value at runtime 
+        securely
+    --idp_url <idp_url> 
+        The IDP/SAML URL that is used to trigger authentication
+    --principal <principal>  
+        The identity to authenticate with in the form of user@REALM
+    --creds_cache <creds_cache>          
+        The filename to store credentials in if successful
+    --token_duration <token_duration>     
+        The duration in seconds that a requested token is valid for from the 
+        time of successful authentication [default: 14400]
+    --role_index <role_index>
+        A predefined numeric entry to select from the list of available IAM
+        Roles [default: -1]
 
 Options:
-  --sslverify       Whether or not to validate the SSL cert from the SAML URL.
-                    Generally not recommended for URLs using self-signed
-                    certificates
-  --debug           More verbose (usually debug) logging and output
+    --sslverify
+        Whether or not to validate the SSL cert from the SAML URL. Generally
+        not recommended for URLs using self-signed certificates
+    --debug           
+        More verbose (usually debug) logging and output
 
 """
 
@@ -170,12 +182,12 @@ try:
     for key, value in iteritems(options):
         _log.debug('command-line options: {}: {}'.format(key, value))
 
-    saml_idp_url = options['<saml_idp_url>']
-    idp_form_params = options['<idp_params>']
-    principal = options['<principal>']
+    saml_idp_url = options['--idp_url']
+    idp_form_params = options['--params']
+    principal = options['--principal']
     ssl_verification = options['--sslverify']
-    aws_config_file = options['<creds_file>']
-    aws_region = options['<aws_region>']
+    aws_config_file = options['--creds_cache']
+    aws_region = options['--region']
 
     if principal == "ASK":
         print('You can get your Realm Principal from using the "klist | grep \'Default principal:\'" command')
@@ -389,12 +401,15 @@ try:
         # Sort the data
         sorted_menu_dict = multikeysort(user_role_table, ['AWS Account', 'Role Name'])
         sorted_internal_dict = multikeysort(internal_role_table, ['AWS Account', 'Role Name'])
-        print("Please choose the role you would like to assume:")
-        print("")
-        print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
-
-        print "Selection: ",
-        selectedroleindex = raw_input()
+        
+        if int(options['--role_index']) > 0:
+            selectedroleindex = int(options['--role_index'])
+        else:        
+            print("Please choose the role you would like to assume:")
+            print("")
+            print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
+            print "Selection: ",
+            selectedroleindex = raw_input()
 
         # Basic sanity check of input
         if int(selectedroleindex) > (len(awsroles) - 1):
@@ -417,7 +432,7 @@ try:
         role_arn,
         principal_arn,
         assertion,
-        duration_seconds=options['<token_duration>']
+        duration_seconds=options['--token_duration']
     )
 
     if token is not None:
