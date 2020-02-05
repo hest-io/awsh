@@ -56,33 +56,24 @@ __awstoken_lowtime_next_sep="$(_screen_encode_color ${__dark_orange} ${__awsh_re
 
 # Attempts to retrieve the current AWS identity name
 function _cli_get_segment_aws_id_name {
-    if _patched_font_in_use; then
-        local segment_icon="$(echo -e "\uf007")"
-    fi
     local segment_value="$(echo ${AWS_ID_NAME})"
     if [[ ! -z $segment_value ]]; then
-        echo "${__date_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awsid_segment} ${segment_icon} ${segment_value} "
+        echo "${__date_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awsid_segment} ${segment_value} "
     fi
 }
 
 
 # Attempts to retrieve the current AWS region
 function _cli_get_segment_aws_region {
-    if _patched_font_in_use; then
-        local segment_icon="$(echo -e "\uf0c2")"
-    fi
     local segment_value="$(echo ${AWS_DEFAULT_REGION})"
     if [ ! -z $segment_value ]; then
-        echo "${__awsid_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awsregion_segment} ${segment_icon} ${segment_value} "
+        echo "${__awsid_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awsregion_segment} ${segment_value} "
     fi
 }
 
 
 # Attempts to retrieve the current AWS identity name
 function _cli_get_segment_aws_token_expiry {
-    if _patched_font_in_use; then
-        local segment_icon="$(echo -e "\uf017")"
-    fi
     if [[ ! -z ${AWS_TOKEN_EXPIRY} ]]; then
         local dt_now="$(date)"
         local dt_expiry="$(date --date "@${AWS_TOKEN_EXPIRY}")"
@@ -98,7 +89,7 @@ function _cli_get_segment_aws_token_expiry {
             local segment_style="${__awstoken_expired_next_sep}${_SEPARATOR_RIGHT_BOLD}${__awstoken_expired_segment}"
         fi
         if [[ ! -z $segment_value ]]; then
-            echo "${segment_style} ${segment_icon} ${segment_value} "
+            echo "${segment_style} ${segment_value} "
         fi
     fi
 }
@@ -110,7 +101,7 @@ function _cli_get_segment_awsh {
 
 
 function _cli_get_segment_datetime {
-    echo "${__awsh_next_sep}${_SEPARATOR_RIGHT_BOLD}${__date_segment}"' \d \t '
+    echo "${__awsh_next_sep}${_SEPARATOR_RIGHT_BOLD}${__date_segment}"' \t '
 }
 
 
