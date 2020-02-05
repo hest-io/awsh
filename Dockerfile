@@ -145,4 +145,5 @@ ENTRYPOINT ["fixuid"]
 
 CMD ["-q", "/bin/bash"]
 
-USER ${AWSH_USER}:${AWSH_GROUP}
+USER awsh
+# USER ${AWSH_USER}:${AWSH_GROUP}
