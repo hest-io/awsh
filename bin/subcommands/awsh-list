@@ -48,7 +48,8 @@ export DEFAULT_OUT EVENT_LOG
 # Trap  abnormal termination
 trap cleanup 1 2 3 15
 
-FILTER_ROOT="${AWSH_ROOT}/etc/filters.d"
+GLOBAL_FILTER_ROOT="${AWSH_ROOT}/etc/filters.d"
+PERSONAL_FILTER_ROOT="${HOME}/.awsh/filters.d"
 AWSCLI_CMD=aws
 AWSCLI_DEFAULT_ARGS="--output=json"
 
@@ -81,12 +82,13 @@ function cleanup {
 
 function show_completions {
 
-    SUBCOMMANDS="$(find ${AWSH_ROOT}/etc/filters.d/ -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
-    VS_SUBCOMMANDS=( $SUBCOMMANDS )
+    GLOBAL_COMPLETIONS="$(find "${GLOBAL_FILTER_ROOT}/" -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
+    PERSONAL_COMPLETIONS="$(find "${PERSONAL_FILTER_ROOT}/" -type f -name '*.jqf' -exec basename {} \; 2> /dev/null | sed -e 's/\.jqf$//g')"
+    VS_COMPLETIONS=("${GLOBAL_COMPLETIONS[@]}" "${PERSONAL_COMPLETIONS[@]}")
 
     saveIFS=$IFS
     IFS=$'\n'
-    echo "${VS_SUBCOMMANDS[*]}" | sort
+    echo "${VS_COMPLETIONS[*]}" | sort
     IFS=$saveIFS
 
 }
@@ -159,10 +161,15 @@ _assert_is_authenticated
 filter_path=
 
 # Check for a valid filter in both AWSH and in the users' config
-if [ -f "${FILTER_ROOT}/${resource_name}.jqf" ]; then
-    filter_path="${FILTER_ROOT}/${resource_name}.jqf"
+if [ -f "${GLOBAL_FILTER_ROOT}/${resource_name}.jqf" ]; then
+    filter_path="${GLOBAL_FILTER_ROOT}/${resource_name}.jqf"
 fi
 
+if [ -f "${PERSONAL_FILTER_ROOT}/${resource_name}.jqf" ]; then
+    filter_path="${PERSONAL_FILTER_ROOT}/${resource_name}.jqf"
+fi
+
+# Add legacy path support
 if [ -f "${HOME}/.awsh/filters/${resource_name}.jqf" ]; then
     filter_path="${HOME}/.awsh/filters/${resource_name}.jqf"
 fi

@@ -15,9 +15,8 @@ _awsh()
         2)
             case ${prev} in
                 list|dump)
-                    builtin_opts="$(ls -1 ${AWSH_ROOT}/etc/filters.d/*.jqf | xargs -i basename {} | sed -e 's/\.jqf$//g')"
-                    local_opts="$(ls -1 ${HOME}/.awsh/filters/*.jqf 2>/dev/null | xargs -i basename {} | sed -e 's/\.jqf$//g')"
-                    COMPREPLY=($(compgen -W "${builtin_opts} ${local_opts}" -- ${cur}))
+                    opts="$(awsh list -c)"
+                    COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
                     ;;
             esac
             ;;

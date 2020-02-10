@@ -20,6 +20,7 @@ ARG RUNTIME_PACKAGES="\
     curl \
     git \
     graphviz \
+    groff \
     jq \
     krb5 \
     libc6-compat \
