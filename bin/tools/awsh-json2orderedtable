@@ -49,6 +49,20 @@ from string import lower
 _log = AWSHLog(__file__)
 check_imports()
 
+csv = {
+    "csv": TableFormat(
+        lineabove=None,
+        linebelowheader=None,
+        linebetweenrows=None,
+        linebelow=None,
+        headerrow=DataRow("", ",", ""),
+        datarow=DataRow("", ",", ""),
+        padding=0,
+        with_header_hide=["lineabove"],
+    )}
+
+_table_formats.update(csv)
+
 
 ###############################################################################
 # Functions
@@ -80,21 +94,6 @@ def multikeysort(items, columns):
     sorted_items = sorted(items, cmp=comparer, key=lambda i: lowercasevalues(i))
     _log.debug('Sorted rows: {}'.format(sorted_items))
     return sorted_items
-
-
-csv = {
-    "csv": TableFormat(
-        lineabove=None,
-        linebelowheader=None,
-        linebetweenrows=None,
-        linebelow=None,
-        headerrow=DataRow("", ",", ""),
-        datarow=DataRow("", ",", ""),
-        padding=0,
-        with_header_hide=["lineabove"],
-    )}
-
-_table_formats.update(csv)
 
 
 def main(options):
