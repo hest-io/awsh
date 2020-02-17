@@ -12,4 +12,3 @@ test/
 mkdocs.yml
 README.md
 scratch
-bin/subcommands/awsh-dump-account

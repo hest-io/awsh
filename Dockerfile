@@ -62,16 +62,11 @@ ENV AWSH_GROUP awsh
 ENV PUID 1000
 ENV PGID 1000
 ENV PYTHONPATH /opt/awsh/lib/python
-ENV PATH /opt/awsh/bin:/opt/awsh/bin/tools:$PATH
+ENV PATH "/opt/awsh/bin:/opt/awsh/bin/tools:${PATH}:${AWSH_USER_HOME}/bin"
 ENV AWSH_CONTAINER docker
 ENV PATCHED_FONT_IN_USE no
 ENV AWSH_VERSION_DOCKER latest
-ENV HTTP_PROXY "${http_proxy}"
-ENV http_proxy "${http_proxy}"
-ENV HTTPS_PROXY "${https_proxy}"
-ENV https_proxy "${https_proxy}"
-ENV no_proxy "${no_proxy}"
-ENV NO_PROXY "${NO_PROXY}"
+
 
 ###############################################################################
 # LABELs
@@ -142,9 +137,9 @@ RUN \
 
 WORKDIR ${AWSH_USER_HOME}
 
-ENTRYPOINT ["fixuid"]
+ENTRYPOINT ["/opt/awsh/lib/docker/entrypoint.sh"]
 
-CMD ["-q", "/bin/bash"]
+CMD ["/bin/bash", "-i"]
 
 USER awsh
 # USER ${AWSH_USER}:${AWSH_GROUP}
