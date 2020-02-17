@@ -32,7 +32,7 @@ from awshutils.logger import AWSHLog
 from awshutils.config import get_config_from_file
 from awshutils import check_imports, clean_up
 import docopt
-from tabulate import tabulate
+from tabulate import tabulate, TableFormat, _table_formats, DataRow
 from operator import itemgetter, attrgetter
 from collections import OrderedDict
 from pprint import pprint as pp
@@ -48,6 +48,20 @@ from string import lower
 
 _log = AWSHLog(__file__)
 check_imports()
+
+csv = {
+    "csv": TableFormat(
+        lineabove=None,
+        linebelowheader=None,
+        linebetweenrows=None,
+        linebelow=None,
+        headerrow=DataRow("", ",", ""),
+        datarow=DataRow("", ",", ""),
+        padding=0,
+        with_header_hide=["lineabove"],
+    )}
+
+_table_formats.update(csv)
 
 
 ###############################################################################
