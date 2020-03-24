@@ -5,4 +5,4 @@ eval $( fixuid -q )
 # UID/GID now match user/group, $HOME has been set to user's home directory
 
 # On with the show
-$@
+exec "$@"
