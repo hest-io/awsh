@@ -13,6 +13,15 @@ ARG https_proxy="${https_proxy}"
 ARG no_proxy="${no_proxy}"
 ARG NO_PROXY="${NO_PROXY}"
 
+ARG BUILD_PACKAGES="\
+    alpine-sdk \
+    gcc \
+    krb5-dev \
+    musl-dev \
+    libffi-dev \
+    openssl-dev \
+    python-dev"
+
 ARG RUNTIME_PACKAGES="\
     bash \
     ca-certificates \
@@ -20,12 +29,14 @@ ARG RUNTIME_PACKAGES="\
     curl \
     git \
     graphviz \
+    grep \
     groff \
     jq \
     krb5 \
     libc6-compat \
     ncurses \
     openssh-client \
+    pcre-tools \
     py-dateutil \
     py-httplib2 \
     py-paramiko \
@@ -83,7 +94,7 @@ RUN \
     # update packages
     apk update && apk upgrade && \
     # install build support. needed for Kerberos installation
-    apk --update add --virtual build-dependencies alpine-sdk gcc krb5-dev musl-dev libffi-dev openssl-dev python-dev && \
+    apk --update add --virtual build-dependencies ${BUILD_PACKAGES} && \
     # install AWSH runtime packages
     apk --no-cache add ${RUNTIME_PACKAGES} && \
     # install AWSH Python dependencies
@@ -107,7 +118,7 @@ RUN \
 
 # Build the config for fixuid
 COPY /lib/docker/fixuid.yml /etc/fixuid/config.yml
-  
+
 # Add our code
 COPY / ${AWSH_ROOT}
 
@@ -129,7 +140,7 @@ RUN { \
     echo 'aws_access_key_id = 1' ; \
     echo 'aws_secret_access_key = 1' ; \
     } | tee ${AWSH_USER_HOME}/.aws/credentials
-    
+
 # Ensure ownership of AWSH paths
 RUN \
     chown -c -R ${AWSH_USER}:${AWSH_GROUP} ${AWSH_ROOT} && \
