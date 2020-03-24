@@ -28,6 +28,7 @@ ARG RUNTIME_PACKAGES="\
     coreutils \
     curl \
     git \
+    git-diff-highlight \
     graphviz \
     grep \
     groff \
