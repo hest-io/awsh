@@ -55,7 +55,7 @@ trap cleanup 1 2 3 15
 
 function show_usage {
     cat <<EOF
-usage: $CONST_SCRIPT_NAME [--help]
+usage: $CONST_SCRIPT_NAME [--help] [-mfa]
 
 Simple wrapper to create a basic AWSH profile
 
