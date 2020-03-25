@@ -59,6 +59,9 @@ usage: $CONST_SCRIPT_NAME [--help] [-mfa]
 
 Simple wrapper to create a basic AWSH profile
 
+Options:
+    -mfa               Prompt for MFA URN
+
 EOF
 }
 
@@ -68,17 +71,19 @@ function cleanup {
     exit 1
 }
 
+# Check if MFA. It is the only option.
+if [ "$1" == '-mfa' ]
+then
+    mfa_option="TRUE"
+    shift
+fi
 
-# show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
+# show help for any other arguments if stdin is a terminal
+if [ "$1" != "" ]
 then
     show_usage
     exit 0
 fi
-
-# As there's only 1 option it's value will be in $2
-id_default_region="${3:-'eu-west-1'}"
-
 
 ##############################################################################
 # Main Script
@@ -98,6 +103,16 @@ read -p "AWSH-ID - AWS Access Key: " id_access_key
 read -p "AWSH-ID - AWS Secret: " id_secret
 read -p "AWSH-ID - AWS Default Region: " id_default_region
 
+if [ "$id_default_region" == "" ]
+then
+    id_default_region="eu-west-1"
+fi
+
+if [ "$mfa_option" == "TRUE" ]
+then
+    read -p "AWSH-ID - AWS MFA URN: " aws_mfa_id
+fi
+
 config_file="$HOME/.awsh/identities/${id_name}/aws.conf"
 cat > "${config_file}" <<EOF
 [default]
@@ -105,6 +120,16 @@ output=json
 aws_access_key_id=${id_access_key}
 aws_secret_access_key=${id_secret}
 region=${id_default_region}
+EOF
+
+if [ "$mfa_option" == "TRUE" ]
+then
+cat >> "${config_file}" <<EOF
+aws_mfa_id=${aws_mfa_id}
+EOF
+fi
+
+cat >> "${config_file}" <<EOF
 
 [preview]
 cloudfront=true
