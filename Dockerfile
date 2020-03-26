@@ -34,6 +34,7 @@ ARG RUNTIME_PACKAGES="\
     groff \
     jq \
     krb5 \
+    less \
     libc6-compat \
     ncurses \
     openssh-client \
@@ -47,7 +48,8 @@ ARG RUNTIME_PACKAGES="\
     sshpass \
     tar \
     util-linux \
-    util-linux-bash-completion"
+    util-linux-bash-completion \
+    wget"
 
 ARG RUBY_RUNTIME_PACKAGES="\
     ruby \
@@ -63,6 +65,7 @@ ARG SW_VER_WEBRICK="1.6.0"
 ARG SW_VER_FIXUID="0.4"
 
 ARG AWSH_PYTHON_DEPS="/tmp/requirements.python2"
+ARG AWSH_PYTHON_EXTRAS="/tmp/requirements.extras"
 
 ###############################################################################
 # ENVs
@@ -90,6 +93,7 @@ RUN adduser -D -u ${PUID} ${AWSH_USER}
 # AWSH and AWS CLI paths
 RUN mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws
 COPY requirements/requirements.python2 ${AWSH_PYTHON_DEPS}
+COPY requirements/requirements.extras ${AWSH_PYTHON_EXTRAS}
 
 RUN \
     # update packages
@@ -100,6 +104,7 @@ RUN \
     apk --no-cache add ${RUNTIME_PACKAGES} && \
     # install AWSH Python dependencies
     python -m pip install -r ${AWSH_PYTHON_DEPS} --disable-pip-version-check && \
+    python -m pip install -r ${AWSH_PYTHON_EXTRAS} --disable-pip-version-check && \
     # install ruby  (needed for terraforming tool)
     apk --no-cache add ${RUBY_RUNTIME_PACKAGES} && \
     # remove the build tools
@@ -109,6 +114,12 @@ RUN \
     gem install terraforming --version ${SW_VER_TERRAFORMING} --no-ri --no-rdoc && \
     # cleanup after installations
     rm -rf /var/cache/apk/*
+
+# Install diff-so-fancy (https://github.com/so-fancy/diff-so-fancy)
+RUN \
+    curl -SsL "https://raw.githubusercontent.com/so-fancy/diff-so-fancy/master/third_party/build_fatpack/diff-so-fancy" -o /usr/local/bin/diff-so-fancy && \
+    chown root:root /usr/local/bin/diff-so-fancy && \
+    chmod 0755 /usr/local/bin/diff-so-fancy
 
 # Install fixuid
 RUN \
