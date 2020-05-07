@@ -35,7 +35,9 @@ services:
       # Map temporary cache, used by Kerberos and for sharing credentials between host and workspace
       - /tmp:/tmp
     environment:
-      # Tip: Activate only the entries you use; http_proxy and https_proxy at a minimum
+      # Use the local repo as the AWSH_ROOT
+      AWSH_ROOT: /workspace
+        # Tip: Activate only the entries you use; http_proxy and https_proxy at a minimum
       HTTP_PROXY: "${http_proxy}"
       http_proxy: "${http_proxy}"
       HTTPS_PROXY: "${https_proxy}"

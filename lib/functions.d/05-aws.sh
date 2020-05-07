@@ -137,7 +137,7 @@ function _aws_load_krb5formauth_credentials {
 
     _screen_note  "Kerberos IDP Account Detected..."
     _screen_note  "Requesting Token for............ ${REQUESTED_TOKEN_DURATION}s"
-        
+
     ${AWSH_ROOT}/bin/subcommands/awsh-token-krb5formauth-create \
         --region "${region}" \
         --idp_url "${aws_idp_url}" \
@@ -301,8 +301,7 @@ function _aws_region {
         if [ -z $new_aws_region ]; then
             echo ""
             echo "You must specify a valid region for this account. Valid entries are:"
-            region_list="$(aws ec2 describe-regions --output=text | awk '{printf "%s ", $3}')"
-            echo "${region_list}" | fold -w 80 -s | column -t
+            echo "$(aws ec2 describe-regions | jq -r '.Regions[] | .RegionName' | column -c 80)"
             echo ""
             echo "Switch region with 'awsh region <name>'"
         else

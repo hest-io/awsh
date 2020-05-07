@@ -139,6 +139,10 @@ function awsh {
             _awsh_version
         ;;
 
+        reload)
+            . "${AWSH_ROOT}/etc/awshrc"
+        ;;
+
         *)
             # Ensure that the command we will try to execute actually exists in the
             # subcommand dir
