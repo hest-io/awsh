@@ -1,0 +1,31 @@
+// For format details, see https://aka.ms/vscode-remote/devcontainer.json or the definition README at
+// https://github.com/microsoft/vscode-dev-containers/tree/master/containers/alpine-3.10-git
+{
+	"name": "AWSH Workspace",
+	"dockerComposeFile": [
+        "docker-compose.yml"
+    ],
+
+    "service": "awsh-workspace",
+    "workspaceFolder": "/workspace",
+    "shutdownAction": "stopCompose",
+
+	// Use 'settings' to set *default* container specific settings.json values on container create.
+	// You can edit these settings after create using File > Preferences > Settings > Remote.
+	"settings": {
+		// This dev container does include /bin/bash if you prefer to use it instead of ash.
+        "terminal.integrated.shell.linux": "/bin/bash"
+	},
+
+    "forwardPorts": [
+        // Used by default for hosting and viewing the docs http://localhost:8000/
+        8000
+    ],
+
+	// Add the IDs of extensions you want installed when the container is created in the array
+	// below. Note that some extensions may not work in Alpine Linux due to glibc dependencies
+	// in native code inside the extension. See https://aka.ms/vscode-remote/linux for details.
+	"extensions": [
+        "ms-python.python"
+    ]
+}

@@ -24,3 +24,5 @@ services:
       NO_PROXY: "${no_proxy}"
       # Tip: Are you already authenticated with AD/Kerberos?
       KRB5CCNAME: "${KRB5CCNAME}"
+      # Tip: Do you have a fancy Font with glyphs?  "AWSH  14:13:51"
+      #   PATCHED_FONT_IN_USE: 'yes'

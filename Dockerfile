@@ -64,8 +64,7 @@ ARG SW_VER_TERRAFORMING="0.18.0"
 ARG SW_VER_WEBRICK="1.6.0"
 ARG SW_VER_FIXUID="0.4"
 
-ARG AWSH_PYTHON_DEPS="/tmp/requirements.python2"
-ARG AWSH_PYTHON_EXTRAS="/tmp/requirements.extras"
+ARG AWSH_PYTHON_DEP_FILES="python2 extras"
 
 ###############################################################################
 # ENVs
@@ -91,9 +90,10 @@ ENV AWSH_VERSION_DOCKER latest
 RUN adduser -D -u ${PUID} ${AWSH_USER}
 
 # AWSH and AWS CLI paths
-RUN mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws
-COPY requirements/requirements.python2 ${AWSH_PYTHON_DEPS}
-COPY requirements/requirements.extras ${AWSH_PYTHON_EXTRAS}
+RUN mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws ${AWSH_ROOT}/tmp/install
+
+# Copy in Py requirement files
+COPY requirements/ ${AWSH_ROOT}/tmp/install
 
 RUN \
     # update packages
@@ -103,8 +103,7 @@ RUN \
     # install AWSH runtime packages
     apk --no-cache add ${RUNTIME_PACKAGES} && \
     # install AWSH Python dependencies
-    python -m pip install -r ${AWSH_PYTHON_DEPS} --disable-pip-version-check && \
-    python -m pip install -r ${AWSH_PYTHON_EXTRAS} --disable-pip-version-check && \
+    for next in ${AWSH_PYTHON_DEP_FILES}; do python -m pip install -r "${AWSH_ROOT}/tmp/install/requirements.${next}" --disable-pip-version-check; done && \
     # install ruby  (needed for terraforming tool)
     apk --no-cache add ${RUBY_RUNTIME_PACKAGES} && \
     # remove the build tools
