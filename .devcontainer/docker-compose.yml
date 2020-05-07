@@ -18,7 +18,7 @@ services:
         # For full development
         AWSH_PYTHON_DEP_FILES: "python2 extras development"
         # For contributing to docs only
-        AWSH_PYTHON_DEP_FILES: "python2 extras docs"
+        # AWSH_PYTHON_DEP_FILES: "python2 extras docs"
     hostname: awsh-workspace
     network_mode: "host"
     entrypoint: /opt/awsh/lib/docker/entrypoint.sh tail -f /dev/null

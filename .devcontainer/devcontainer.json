@@ -26,6 +26,7 @@
 	// below. Note that some extensions may not work in Alpine Linux due to glibc dependencies
 	// in native code inside the extension. See https://aka.ms/vscode-remote/linux for details.
 	"extensions": [
-        "ms-python.python"
+        "ms-python.python",
+        "eamodio.gitlens"
     ]
 }
