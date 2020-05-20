@@ -25,6 +25,3 @@ __pycache__/
 
 wip/
 
-# Ignore docs for now until they are updated
-docs/
-/mkdocs.yml

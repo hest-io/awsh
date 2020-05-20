@@ -1,0 +1,37 @@
+---
+# Site details
+site_name: 'Hestio AWSH: AWS Helper'
+site_description: Load and use your AWS identities with all your favorite AWS tools
+site_author: Hestio
+
+# Source code repo
+repo_url: 'https://github.com/hest-io/awsh'
+
+# Style and Theme
+theme:
+  name: material
+  palette:
+    primary: 'deep purple'
+    accent: 'purple'
+  social:
+    - type: 'github'
+      link: 'https://github.com/hest-io'
+  features:
+    tabs: true
+  icon:
+    logo: fontawesome/solid/hands-helping
+    repo: fontawesome/brands/github
+
+
+# Sitemap
+nav:
+- 'Getting Started':
+  - 'Overview': 'index.md'
+- 'User Guide':
+  - 'Overview': 'index.md'
+- 'Contributor/Developer Guide':
+  - 'Overview': 'index.md'
+- 'Advanced Usage':
+  - 'Overview': 'index.md'  
+- 'About the Project':
+  - 'Release Notes': 'index.md'
