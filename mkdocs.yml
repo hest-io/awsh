@@ -1,11 +1,13 @@
 ---
 # Site details
-site_name: 'Hestio AWSH: AWS Helper'
+site_name: 'AWSH: AWS CLI Helper'
 site_description: Load and use your AWS identities with all your favorite AWS tools
 site_author: Hestio
 
+
 # Source code repo
 repo_url: 'https://github.com/hest-io/awsh'
+
 
 # Style and Theme
 theme:
@@ -16,22 +18,66 @@ theme:
   social:
     - type: 'github'
       link: 'https://github.com/hest-io'
-  features:
-    tabs: true
+  # features:
+  #   tabs: true
   icon:
     logo: fontawesome/solid/hands-helping
     repo: fontawesome/brands/github
 
 
+# Extensions
+markdown_extensions:
+  - markdown_include.include:
+      base_path: docs/includes
+  - markdown.extensions.admonition
+  - markdown.extensions.codehilite:
+      guess_lang: false
+      linenums: true
+  - markdown.extensions.def_list
+  - markdown.extensions.footnotes
+  - markdown.extensions.meta
+  - markdown.extensions.toc:
+      permalink: true
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format
+
+
+# Addition JS and CSS
+extra_css:
+- https://unpkg.com/mermaid@8.5.1/dist/mermaid.css
+
+extra_javascript:
+- https://unpkg.com/mermaid@8.5.1/dist/mermaid.min.js
+
+
 # Sitemap
 nav:
-- 'Getting Started':
-  - 'Overview': 'index.md'
-- 'User Guide':
-  - 'Overview': 'index.md'
-- 'Contributor/Developer Guide':
-  - 'Overview': 'index.md'
-- 'Advanced Usage':
-  - 'Overview': 'index.md'  
-- 'About the Project':
-  - 'Release Notes': 'index.md'
+  - 'Getting Started': 'index.md'
+  - 'User Guide':
+    - 'Setup AWS Access': 'user-guide/auth-setup.md'
+  - 'Contributor Guide':
+    - 'Getting Involved': 'placeholder.md'
+    - 'Contributing Filters': 'placeholder.md'
+    - 'Contributing Commands': 'placeholder.md'
+    - 'Contributing Docs': 'placeholder.md'
+  - 'Advanced Usage':
+    - 'Overview': 'placeholder.md'  
+  - 'About the Project':
+    - 'Release Notes': 'placeholder.md'
+  - 'FAQ': 'placeholder.md'
+
