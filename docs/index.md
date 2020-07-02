@@ -90,5 +90,3 @@ Some of the awsome things in here in addition to our own tools are;
     - Replace Python2 with Python3
     - AWS Systems Manager Session Manager: [https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html})
     - AWS SAM CLI: CLI tool to build, test, debug, and deploy Serverless applications using AWS SAM [https://aws.amazon.com/serverless/sam/](https://aws.amazon.com/serverless/sam/)
-
-
