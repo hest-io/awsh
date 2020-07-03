@@ -1,4 +1,4 @@
-{!hestio-header.md!}
+{!includes/hestio-header.md!}
 
 # Getting Started with AWSH
 
