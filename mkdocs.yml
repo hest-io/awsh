@@ -24,36 +24,40 @@ theme:
     logo: fontawesome/solid/hands-helping
     repo: fontawesome/brands/github
 
+# Plugins
+plugins:
+- search
+- mermaid2
 
 # Extensions
 markdown_extensions:
-  - markdown_include.include
-  - markdown.extensions.admonition
-  - markdown.extensions.codehilite:
-      guess_lang: false
-      linenums: true
-  - markdown.extensions.def_list
-  - markdown.extensions.footnotes
-  - markdown.extensions.meta
-  - markdown.extensions.toc:
-      permalink: true
-  - pymdownx.arithmatex
-  - pymdownx.betterem:
-      smart_enable: all
-  - pymdownx.caret
-  - pymdownx.critic
-  - pymdownx.inlinehilite
-  - pymdownx.magiclink
-  - pymdownx.mark
-  - pymdownx.smartsymbols
-  - pymdownx.tasklist:
-      custom_checkbox: true
-  - pymdownx.tilde
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_div_format
+- markdown_include.include
+- markdown.extensions.admonition
+- markdown.extensions.codehilite:
+    guess_lang: false
+    linenums: true
+- markdown.extensions.def_list
+- markdown.extensions.footnotes
+- markdown.extensions.meta
+- markdown.extensions.toc:
+    permalink: true
+- pymdownx.arithmatex
+- pymdownx.betterem:
+    smart_enable: all
+- pymdownx.caret
+- pymdownx.critic
+- pymdownx.inlinehilite
+- pymdownx.magiclink
+- pymdownx.mark
+- pymdownx.smartsymbols
+- pymdownx.tasklist:
+    custom_checkbox: true
+- pymdownx.tilde
+- pymdownx.superfences
+#      custom_fences:
+#        - name: mermaid
+#          class: mermaid
+#          format: !!python/name:pymdownx.superfences.fence_div_format
 
 
 # Addition JS and CSS
@@ -66,17 +70,16 @@ extra_javascript:
 
 # Sitemap
 nav:
-  - 'Getting Started': 'index.md'
-  - 'User Guide':
-    - 'Setup AWS Access': 'user-guide/auth-setup.md'
-  - 'Contributor Guide':
-    - 'Getting Involved': 'placeholder.md'
-    - 'Contributing Filters': 'placeholder.md'
-    - 'Contributing Commands': 'placeholder.md'
-    - 'Contributing Docs': 'placeholder.md'
-  - 'Advanced Usage':
-    - 'Overview': 'placeholder.md'  
-  - 'About the Project':
-    - 'Release Notes': 'placeholder.md'
-  - 'FAQ': 'placeholder.md'
-
+- 'Getting Started': 'index.md'
+- 'User Guide':
+  - 'Setup AWS Access': 'user-guide/auth-setup.md'
+- 'Contributor Guide':
+  - 'Getting Involved': 'placeholder.md'
+  - 'Contributing Filters': 'placeholder.md'
+  - 'Contributing Commands': 'placeholder.md'
+  - 'Contributing Docs': 'placeholder.md'
+- 'Advanced Usage':
+  - 'Overview': 'placeholder.md'  
+- 'About the Project':
+  - 'Release Notes': 'placeholder.md'
+- 'FAQ': 'placeholder.md'
