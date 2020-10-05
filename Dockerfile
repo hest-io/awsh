@@ -30,6 +30,7 @@ ARG RUNTIME_PACKAGES="\
     git \
     git-diff-highlight \
     graphviz \
+    ttf-freefont \
     grep \
     groff \
     jq \
@@ -137,7 +138,10 @@ COPY / ${AWSH_ROOT}
 RUN ln -s ${AWSH_ROOT}/lib/jq ${AWSH_USER_HOME}/.jq
 
 # Ensure the AWSH lib is being loaded into the shell
-RUN echo '. /opt/awsh/etc/awshrc' >> ${AWSH_USER_HOME}/.bashrc
+RUN { \
+    echo '. /opt/awsh/etc/awshrc' ; \
+    echo '[ -f ${HOME}/.bashrc_local ] && . ${HOME}/.bashrc_local' ; \
+    } | tee -a ${AWSH_USER_HOME}/.bashrc
 
 # Build default AWS CLI config so that it doesn't have a brain fart when
 # run due to not setting it's own sensible defaults
