@@ -24,12 +24,8 @@ Depending on where you work and who you work for though it's more likely that if
 
 If you're using the AWS Console then accessing AWS using your corporate identify is often only a matter of several clicks
 
-```mermaid
-graph LR
-    A[Login to PC] --> B[Launch Browser] --> C[Corp AWS Sign-in] --> D[Choose IAM Role] --> E[Logged in to AWS]
-    classDef amazon stroke:#232F3E,fill:#232F3E,color:#ffffff;
-    class E amazon;    
-```    
+![AWSH Console Flow](media/images/awsh-user-flow-console.png)
+
 
 **CLI Based Experience**
 
@@ -41,15 +37,7 @@ The experience for CLI users is not as seamless though when you need to use your
 
 **AWSH** attempts to bridge that gap and provide the same experience at the CLI that we're all accustomed to in the Web Browser
 
-
-```mermaid
-graph LR
-    A[Login to PC] --> B[Launch AWSH] --> C[Corp AWS Sign-in] --> D[Choose IAM Role] --> E[Logged in to AWS]
-    classDef awsh stroke:#7a50af,fill:#7a50af,color:#ffffff;
-    classDef amazon stroke:#232F3E,fill:#232F3E,color:#ffffff;
-    class B awsh;
-    class E amazon;
-```    
+![AWSH Terminal Flow](media/images/awsh-user-flow-terminal.png)
 
 
 
