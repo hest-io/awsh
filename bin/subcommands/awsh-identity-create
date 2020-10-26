@@ -55,9 +55,12 @@ trap cleanup 1 2 3 15
 
 function show_usage {
     cat <<EOF
-usage: $CONST_SCRIPT_NAME [--help]
+usage: $CONST_SCRIPT_NAME [--help] [-mfa]
 
 Simple wrapper to create a basic AWSH profile
+
+Options:
+    -mfa               Prompt for MFA URN
 
 EOF
 }
@@ -68,35 +71,43 @@ function cleanup {
     exit 1
 }
 
+# Check if MFA. It is the only option.
+if [ "$1" == '-mfa' ]; then
+    mfa_option="${TRUE}"
+    shift
+fi
 
-# show help for no arguments if stdin is a terminal
-if [ "$1" == '-h' ] || [ "$1" == '--help' ] || [ "$1" == 'help' ]
-then
+# show help for any other arguments if stdin is a terminal
+if [ "$1" != "" ]; then
     show_usage
     exit 0
 fi
-
-# As there's only 1 option it's value will be in $2
-id_default_region="${3:-'eu-west-1'}"
-
 
 ##############################################################################
 # Main Script
 ##############################################################################
 
 echo "AWSH-ID - Identity Name (eg. PERSONAL-ROOT-jeff-eu-west-1, PERSONAL-IAM-jeff-us-east-1) "
-read -p "Name: " id_name
+read -r -p "Name: " id_name
 
 if [ ! -d "$HOME/.awsh/identities/${id_name}" ]; then
-    mkdir -p $HOME/.awsh/identities/${id_name}
+    mkdir -p "${HOME}/.awsh/identities/${id_name}"
 else
     echo "AWSH-ID: Name already exists!"
     exit 1
 fi
 
-read -p "AWSH-ID - AWS Access Key: " id_access_key
-read -p "AWSH-ID - AWS Secret: " id_secret
-read -p "AWSH-ID - AWS Default Region: " id_default_region
+read -r -p "AWSH-ID - AWS Access Key: " id_access_key
+read -r -p "AWSH-ID - AWS Secret: " id_secret
+read -r -p "AWSH-ID - AWS Default Region: " id_default_region
+
+if [ "$id_default_region" == "" ]; then
+    id_default_region="eu-west-1"
+fi
+
+if [ "${mfa_option}" == "${TRUE}" ]; then
+    read -r -p "AWSH-ID - AWS MFA URN: " aws_mfa_id
+fi
 
 config_file="$HOME/.awsh/identities/${id_name}/aws.conf"
 cat > "${config_file}" <<EOF
@@ -105,13 +116,22 @@ output=json
 aws_access_key_id=${id_access_key}
 aws_secret_access_key=${id_secret}
 region=${id_default_region}
+EOF
+
+if [ "${mfa_option}" == "${TRUE}" ]; then
+cat >> "${config_file}" <<EOF
+aws_mfa_id=${aws_mfa_id}
+EOF
+fi
+
+cat >> "${config_file}" <<EOF
 
 [preview]
 cloudfront=true
 EOF
 
 ssh_key_file="$HOME/.awsh/identities/${id_name}/ssh_id.pem"
-touch ${ssh_key_file}
-chmod 400 ${ssh_key_file}
+touch "${ssh_key_file}"
+chmod 400 "${ssh_key_file}"
 
 echo "AWSH-ID - Basic Identity created: ${config_file}"
