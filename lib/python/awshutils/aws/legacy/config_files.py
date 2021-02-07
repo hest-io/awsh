@@ -4,7 +4,7 @@ from awshutils.aws.legacy.utils import CONST_AWSH_ROOT, IterRegistry
 from os import walk
 from os.path import basename
 import json
-import ConfigParser
+import configparser
 from os.path import expanduser
 
 # This should move to config (as in an actual config file...)
@@ -12,9 +12,8 @@ from os.path import expanduser
 CONST_REL_CONFIG_DIR = expanduser('~/.cloudbuilder')
 
 
-class ConfigObject:
+class ConfigObject(metaclass=IterRegistry):
 
-    __metaclass__ = IterRegistry
     _registry = []
     obj_type = None
 
@@ -102,7 +101,7 @@ class IniConfig(ConfigFile):
 
         utils.log.debug('Loading parms from {0}'.format(self.filename))
 
-        config = ConfigParser.ConfigParser()
+        config = configparser.ConfigParser()
         config.optionxform = str
         config.read(self.filename)
 

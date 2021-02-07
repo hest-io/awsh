@@ -25,8 +25,10 @@
 	// Add the IDs of extensions you want installed when the container is created in the array
 	// below. Note that some extensions may not work in Alpine Linux due to glibc dependencies
 	// in native code inside the extension. See https://aka.ms/vscode-remote/linux for details.
-	"extensions": [
-        "ms-python.python",
-        "eamodio.gitlens"
+    "extensions": [
+        "jq-syntax-highlighting.jq-syntax-highlighting",
+        "haaaad.ansible",
+        "hashicorp.terraform",
+        "ms-python.python"
     ]
 }

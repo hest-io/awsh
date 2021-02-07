@@ -125,7 +125,7 @@ function _discard {
 
 function _tabulate {
     cat \
-        | awsh-json2orderedtable -s "${output_sort_keys}" ${vs_table_helper_args[*]}
+        | awsh-json2table -s "${output_sort_keys}" ${vs_table_helper_args[*]}
 }
 
 

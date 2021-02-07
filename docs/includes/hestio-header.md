@@ -7,6 +7,6 @@ td:first-of-type {
   white-space: nowrap;
 }
 th {
-  background-color: #7a50af !important;
+  background-color: #606060 !important;
 }
 </style>

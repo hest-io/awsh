@@ -7,7 +7,7 @@ import yaml
 import optparse
 import subprocess
 import collections
-import ConfigParser
+import configparser
 from boto.ec2 import elb
 from boto import ec2, vpc
 from rainbow_logging_handler import RainbowLoggingHandler
@@ -56,9 +56,8 @@ class AWS_DX_CONNECTION:
 class AWS_DX_INTERFACE:
     pass
 
-class ConfigObject:
+class ConfigObject(metaclass=IterRegistry):
 
-    __metaclass__ = IterRegistry
     _registry = []
     obj_type = None
 
@@ -94,7 +93,7 @@ def load_params_file(filename):
 
     log.debug('Loading parms from {0}'.format(filename))
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     config.optionxform = str
     config.read(filename)
 

@@ -7,7 +7,7 @@ services:
   awsh-workspace:
     build:
       context: ../
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.python3
       args:
         http_proxy: "${http_proxy}"
         https_proxy: "${https_proxy}"
@@ -15,10 +15,6 @@ services:
         HTTPS_PROXY: "${https_proxy}"
         no_proxy: "${no_proxy}"
         NO_PROXY: "${no_proxy}"
-        # For full development
-        AWSH_PYTHON_DEP_FILES: "python2 extras development"
-        # For contributing to docs only
-        # AWSH_PYTHON_DEP_FILES: "python2 extras docs"
     hostname: awsh-workspace
     network_mode: "host"
     entrypoint: /opt/awsh/lib/docker/entrypoint.sh tail -f /dev/null

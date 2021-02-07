@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 Simple utility script that reads JSON from STDIN and attempts to convert the
@@ -6,20 +6,16 @@ content to a table, before output in a given format. Very useful for the walls
 of text that adding "--output=json" to AWS cli commands generates
 
 Usage:
-    jason2table [options]
-    jason2table ( -h | --help )
+    json2table [options]
+    json2table ( -h | --help )
 
 Options:
     -f <format>, --format=<format>
                         Supported values are; plain, simple, grid, pipe,
                         orgtbl, rst, mediawiki, latex [default: simple]
-    -k, --key=<key>     Object to use a key for array retrieval if JSON contains
-                        a dict of lists. If not provided then command will
-                        assume that content is an list
-    -c, --cols=<cols>   A CSV string specifying the columns from the data to
-                        use as a filter before displaying the results
     -s, --sort=<sort>   A CSV string specifying the columns from the data to
-                        use in sorting the results.
+                        use in sorting the results. [default: ]
+    -n, --numbered      Number the rows [default: False]
     -h, --help          Show this help message and exit
     --debug             Show more verbose logging
 
@@ -36,9 +32,12 @@ from awshutils.logger import AWSHLog
 from awshutils.config import get_config_from_file
 from awshutils import check_imports, clean_up
 import docopt
-from tabulate import tabulate
-from operator import itemgetter
+from tabulate import tabulate, TableFormat, _table_formats, DataRow
+from operator import itemgetter, attrgetter
 from collections import OrderedDict
+from pprint import pprint as pp
+from functools import cmp_to_key
+import pandas as pd
 
 ###############################################################################
 # CONFIG - Begin
@@ -51,40 +50,24 @@ from collections import OrderedDict
 _log = AWSHLog(__file__)
 check_imports()
 
+csv = {
+    "csv": TableFormat(
+        lineabove=None,
+        linebelowheader=None,
+        linebetweenrows=None,
+        linebelow=None,
+        headerrow=DataRow("", ",", ""),
+        datarow=DataRow("", ",", ""),
+        padding=0,
+        with_header_hide=["lineabove"],
+    )}
+
+_table_formats.update(csv)
+
 
 ###############################################################################
 # Functions
 ###############################################################################
-
-def find_values(id, json_repr):
-    results = []
-
-    def _decode_dict(a_dict):
-        try: results.append(a_dict[id])
-        except KeyError: pass
-        return a_dict
-
-    json.loads(json_repr, object_hook=_decode_dict)  # return value ignored
-    return results
-
-
-def multikeysort(items, columns):
-    from operator import itemgetter
-    comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else
-                  (itemgetter(col.strip()), 1)) for col in columns]
-    def comparer(left, right):
-        for fn, mult in comparers:
-            try:
-                result = cmp(fn(left), fn(right))
-                if result:
-                    return mult * result
-            except KeyError:
-                pass
-        else:
-            return 0
-    return sorted(items, cmp=comparer)
-
-
 
 
 def main(options):
@@ -96,76 +79,35 @@ def main(options):
         import logging
         _log.setLevel(logging.DEBUG)
 
-    for key, value in iteritems(options):
+    for key, value in options.items():
         _log.debug('command-line options: {}: {}'.format(key, value))
 
     try:
 
         # Read content from STDIN
-        f = sys.stdin
-        data = f.readlines()
-        content = ''.join(data)
-        j = json.loads(content, object_pairs_hook=OrderedDict)
+        df = pd.read_json(sys.stdin, convert_axes=False, convert_dates=False, dtype=str)
 
         # Check if we have any data
-        if len(j) < 1:
-            _log.error('No data found for table')
+        if len(df) < 1:
+            _log.error('No data found to process. Did the query generate any data?')
             clean_up(-1)
 
-        keylist = []
-        if not isinstance(j, (list, tuple)):
-            keylist = j.keys()
+        # Attempt to sort the data using provided sort keys with fallback to
+        # actual key order in data provided
+        sort_keys = []
+        if options['--sort']:
+            _log.debug('Using custom sort keys: {}'.format(options['--sort']))
+            sort_keys = options['--sort'].strip().split(',')
+            df = df.sort_values(by=sort_keys)
 
-            # If no key was provided then attempt to use the first key found
-            if options['--key'] is None:
-                _log.debug('No key provided. Default to first key in key-list')
-                table_key = keylist[0]
-            else:
-                table_key = options['--key']
-
-            # Now find all the rows
-            table_data = find_values(table_key, content)
-
-            # Flatten the nested lists to just one list
-            table_data = [item for sublist in table_data for item in sublist]
-
-        else:
-            keylist = j[0].keys()
-            table_data = j
-
-        _log.debug('Found keys: {}'.format(keylist))
-        _log.debug('Counted {} lines'.format(len(data)))
-
-        # Check if we have any keys
-        if len(keylist) > 0:
-
-            # Now we have a list of things
-            _log.debug('Collected {} rows of table data'.format(len(table_data)))
-
-            # Now filter the data if needed to only the cols specified
-            if options['--cols'] is not None:
-                cols = options['--cols'].split(',')
-                x = [{k:v for k,v in row.iteritems() if k in cols} for row in table_data]
-                table_data = [ OrderedDict((k, v) for k,v in row.iteritems() if k in cols) for row in table_data]
-
-            # Now sort the data if needed
-            if options['--sort'] is not None:
-                sort_order = options['--sort'].split(',')
-                table_data = multikeysort(table_data, sort_order)
-
-            if len(table_data) > 0:
-                print(tabulate(multikeysort(table_data,keylist), headers='keys', tablefmt=options['--format']))
-            # Key was provided but was crap
-            else:
-                _log.error('Key not found in JSON: {}'.format(table_key))
-                clean_up(-1)
-
-        else:
-            _log.error('No keys found in JSON for table data')
-            clean_up(-1)
+        print(tabulate(df, headers='keys', tablefmt=options['--format'], showindex=options['--numbered']))
 
     except TypeError as e:
         _log.error('Content does not appear to be valid JSON: {}'.format(e))
+        clean_up(-1)
+
+    except KeyError as e:
+        _log.error('Sort key provided does not exist in JSON: {}'.format(e))
         clean_up(-1)
 
     except AssertionError as e:
