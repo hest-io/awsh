@@ -4,7 +4,7 @@
 # depending on the OS detected.
 # TODO(kxseven: Better solution needed on OSX for forked shells from within Python
 if [[ "$(uname)" == "Darwin" ]]; then
-   export PYTHONPATH="${AWSH_ROOT}/local/python/lib/python2.7/site-packages:${AWSH_ROOT}/lib:${AWSH_ROOT}/bin/tools:${AWSH_ROOT}/bin/subcommands"
+   export PYTHONPATH="${PYTHONPATH}:${AWSH_ROOT}/lib/python:${AWSH_ROOT}/bin/tools:${AWSH_ROOT}/bin/subcommands"
 elif [[ "${AWSH_CONTAINER}" == "docker" ]]; then
        PYTHONPATH=$PYTHONPATH:${AWSH_ROOT}/lib/python:${AWSH_ROOT}/bin/tools:${AWSH_ROOT}/bin/subcommands
        export PYTHONPATH

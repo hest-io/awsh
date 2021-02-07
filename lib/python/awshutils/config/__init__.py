@@ -14,9 +14,8 @@ class IterRegistry(type):
         return iter(cls._registry)
 
 
-class ConfigObject:
+class ConfigObject(metaclass=IterRegistry):
 
-    __metaclass__ = IterRegistry
     _registry = []
     obj_type = None
 
@@ -95,8 +94,8 @@ def _get_config_from_ini_file(f):
 
     _log.debug('Loading parms from {0}'.format(filename))
 
-    import ConfigParser
-    config = ConfigParser.ConfigParser()
+    import configparser
+    config = configparser.ConfigParser()
     config.optionxform = str
     config.read(filename)
 

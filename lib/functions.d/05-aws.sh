@@ -59,11 +59,27 @@ function _aws_load_credentials_from_json {
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_EXPIRY}")
-    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date ${AWS_TOKEN_EXPIRY})
+    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date ${AWS_EXPIRY})
     _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
+
+}
+
+
+function _aws_load_credentials_from_instance {
+
+    local instance_profile_id="$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
+    local instance_region="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')"
+    local instance_credentials_url="http://169.254.169.254/latest/meta-data/iam/security-credentials/${instance_profile_id}"
+
+    AWS_ID_NAME="instance-profile/${instance_profile_id}"
+    AWS_DEFAULT_REGION="${instance_region}"
+
+    export AWS_ID_NAME AWS_DEFAULT_REGION
+
+    _aws_load_credentials_from_json <( curl -s ${instance_credentials_url} | jq '. + { SessionToken: .Token} | { Credentials: . }' )
 
 }
 

@@ -8,3 +8,5 @@
 (
     (.Tags // [])|from_entries
 )
+| if .CreationDate > 0 then .CreationDate |= (. | todate) else . end
+| if .LastUpdatedDate > 0 then .LastUpdatedDate |= (. | todate) else . end

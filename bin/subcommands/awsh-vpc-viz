@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """
 Simple utility to export as much info as possible about a given VPC so that it
@@ -141,7 +141,7 @@ def gv_safe_name(v):
 
 
 def dict_replace(text, replacements):
-    for key, val in replacements.iteritems():
+    for key, val in replacements.items():
         text = text.replace(key, val)
     return text
 

@@ -1,4 +1,4 @@
-# AWSH: Cloud Shell
+# AWSH: AWesome SHell for Cloud
 
 AWS Shell: Load and use your AWS identities with all your favorite AWS tools
 
@@ -24,7 +24,7 @@ This should make it easier for you to use the latest version and make it easier 
 - From your command line pull and run the latest AWSH image
 
     ```console
-    $ docker run -it hestio/awsh
+    $ docker run -it --rm hestio/awsh
     ```
 
 ### Use AWSH with persistent identities
@@ -47,7 +47,7 @@ This should make it easier for you to use the latest version and make it easier 
         hestio/awsh
     ```
 
-### Use AWSH with persistent identities, workspace, proxy config and AD/Kerberos credentials
+### Use AWSH with persistent identities, workspace, proxy config and Active Directory/Kerberos credentials
 
 - Create a path to store your AWSH identities
 

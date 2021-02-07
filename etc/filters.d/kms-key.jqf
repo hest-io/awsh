@@ -1,0 +1,10 @@
+#cmd: kms list-keys
+#sort: KeyArn
+
+.Keys[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)
