@@ -1,0 +1,83 @@
+---
+
+# do not use "latest" here, if you want this to work in the future
+image:
+  name: docker:18
+
+stages:
+  - build
+  - push
+
+variables:
+  DOCKERHUB_REGISTRY: "docker.io"
+  DOCKERHUB_IMAGE: "hestio/awsh"
+  DOCKER_FILE: "Dockerfile.python3"
+  DOCKER_BUILD_CONTEXT: "."
+
+services:
+  - docker:dind
+
+before_script:
+  - echo -n $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
+
+
+###############################################################################
+# Task Templates
+###############################################################################
+
+# Here, the goal is to tag the "master" branch as "latest"
+.push_image:
+  variables:
+    # We are just playing with Docker here. 
+    # We do not need GitLab to clone the source code.
+    GIT_STRATEGY: none
+    IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
+  stage: push
+  script:
+    # Because we have no guarantee that this job will be picked up by the same runner 
+    # that built the image in the previous step, we pull it again locally
+    - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+    - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} ${CI_REGISTRY_IMAGE}:${IMAGE_TAG}
+    - docker push ${CI_REGISTRY_IMAGE}:${IMAGE_TAG}
+    # We also want to push the ${IMAGE_TAG} release into DockerHub
+    - echo -n ${DOCKERHUB_REGISTRY_PASS} | docker login -u ${DOCKERHUB_REGISTRY_LOGIN} --password-stdin ${DOCKERHUB_REGISTRY}
+    - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} ${DOCKERHUB_IMAGE}:${IMAGE_TAG}
+    - docker push ${DOCKERHUB_IMAGE}:${IMAGE_TAG}
+
+
+###############################################################################
+# Tasks
+###############################################################################
+
+build-image:
+  stage: build
+  script:
+    # fetches the latest image (not failing if image is not found)
+    - docker pull $CI_REGISTRY_IMAGE:latest || true  
+    - >
+      docker build
+      --cache-from $CI_REGISTRY_IMAGE:latest
+      --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+      -f "${DOCKER_FILE}" 
+      "${DOCKER_BUILD_CONTEXT}"
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+
+
+# Here, the goal is to tag the "master" branch as "latest"
+push-latest:
+  extends:
+    - .push_image
+  variables:
+    IMAGE_TAG: latest
+  only:
+    # Only "master" should be tagged "latest"
+    - master
+
+
+push-label:
+  extends:
+    - .push_image
+  only:
+    # We want this job to be run on tags only.
+    - tags
+    - develop
