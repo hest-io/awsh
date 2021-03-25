@@ -84,6 +84,18 @@ function _aws_load_credentials_from_instance {
 }
 
 
+function _aws_load_credentials_from_cloudshell {
+
+    # CloudSHell is already authenticated. We only need to pull out the credentials
+    AWS_ID_NAME="$(aws sts get-caller-identity | jq -r '.Arn' | awk -F':' '{print $6}')"
+    AWS_DEFAULT_REGION="${AWS_REGION}"
+    export AWS_ID_NAME AWS_DEFAULT_REGION
+
+    _aws_load_credentials_from_json <( curl -s "${AWS_CONTAINER_CREDENTIALS_FULL_URI}"  -H "Authorization: ${AWS_CONTAINER_AUTHORIZATION_TOKEN}" | jq '. + { SessionToken: .Token} | { Credentials: . }' )
+
+}
+
+
 # Helper function to get API keys using MFA token
 function _aws_load_mfaauth_credentials {
 
@@ -402,6 +414,7 @@ function _aws_session_save {
         | xargs -i echo "export {}" \
         | sed -e 's/=/=\"/' \
         | sed -e 's/$/\"/' > "${CREDENTIALS_CACHE}"
+    _screen_info 'AWS credentials saved to cache'
 }
 
 
@@ -410,6 +423,7 @@ function _aws_session_load {
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
     fi
+    _screen_info 'AWS credentials loaded from cache'
 }
 
 

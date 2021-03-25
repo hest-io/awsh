@@ -22,6 +22,8 @@ ARG AWSH_OS_BUILD_DEPS="requirements_os_build.alpine"
 ARG AWSH_OS_RUNTIME_DEPS="requirements_os_runtime.alpine"
 ARG AWSH_PYTHON_RUNTIME_DEPS="requirements_awsh.python3"
 
+ARG CMD_PIP="python3 -m pip"
+
 ARG AWSH_PIP_INSTALL_ARGS="--no-cache-dir --disable-pip-version-check"
 ARG AWSH_GEM_INSTALL_ARGS="--no-document"
 
@@ -70,8 +72,8 @@ RUN \
     apk --no-cache add $(cat ${AWSH_ROOT}/tmp/install/${AWSH_OS_RUNTIME_DEPS} | egrep -v "^\s*(#|$)") && \
     # install AWSH Python dependencies
     python3 -m ensurepip --default-pip && \
-    python3 -m pip install ${AWSH_PIP_INSTALL_ARGS} wheel setuptools && \
-    python3 -m pip install ${AWSH_PIP_INSTALL_ARGS} -r "${AWSH_ROOT}/tmp/install/${AWSH_PYTHON_RUNTIME_DEPS}" && \
+    ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} wheel setuptools && \
+    ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} -r "${AWSH_ROOT}/tmp/install/${AWSH_PYTHON_RUNTIME_DEPS}" && \
     # remove the build tools
     apk del build-dependencies && \
     # Add Terraforming Ruby tool

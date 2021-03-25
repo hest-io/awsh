@@ -244,7 +244,7 @@ try:
 
     # Parse the response and extract all the necessary values
     # in order to build a dictionary of all of the form values the IdP expects
-    formsoup = BeautifulSoup(formresponse.text.decode('utf8'), "html.parser")
+    formsoup = BeautifulSoup(formresponse.text, "html.parser")
 
     _log.debug('----- Headers -----')
     _log.debug(formresponse.headers)
@@ -313,7 +313,7 @@ try:
 
 
     # Decode the response and extract the SAML assertion
-    soup = BeautifulSoup(response.text.decode('utf8'), "html.parser")
+    soup = BeautifulSoup(response.text, "html.parser")
     assertion = ''
 
     # Look for the SAMLResponse attribute of the input tag (determined by
@@ -370,7 +370,7 @@ try:
 
     # If I have more than one role, ask the user which one they want,
     # otherwise just proceed
-    print ""
+    print("")
     if len(awsroles) > 1:
         i = 0
         user_role_table = []
@@ -408,12 +408,12 @@ try:
             print("Please choose the role you would like to assume:")
             print("")
             print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
-            print "Selection: ",
+            print("Selection: ")
             selectedroleindex = input()
 
         # Basic sanity check of input
         if int(selectedroleindex) > (len(awsroles) - 1):
-            print 'You selected an invalid role index, please try again'
+            print("You selected an invalid role index, please try again")
             sys.exit(0)
 
         role_arn = sorted_internal_dict[int(selectedroleindex)]['role_arn']

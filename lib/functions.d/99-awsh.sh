@@ -112,7 +112,15 @@ function awsh {
         ;;
 
         login)
-            _aws_login "${@}"
+            if [[ -n "$AWS_CONTAINER_CREDENTIALS_FULL_URI" ]] && [[ -n "$AWS_CONTAINER_AUTHORIZATION_TOKEN" ]]; then
+                _screen_info "CloudShell detected. Attempting to load existing credentials"
+                _aws_load_credentials_from_cloudshell
+            elif [[ "$1" == "instance" ]]; then
+                _screen_info "Attempting to aquire credentials from Instance"
+                _aws_load_credentials_from_instance
+            else
+                _aws_login "${@}"
+            fi
         ;;
 
         logout|session-purge)
