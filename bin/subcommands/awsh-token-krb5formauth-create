@@ -91,37 +91,6 @@ CONST_AWSH_CONFIG_ROOT = os.getenv('CONST_AWSH_CONFIG_ROOT', '{}/.awsh/config.d'
 # Functions
 ###############################################################################
 
-def multikeysort(items, columns, ignore_case=True):
-    # From: https://stackoverflow.com/questions/1143671/python-sorting-list-of-dictionaries-by-multiple-keys
-    _log.debug('Sorting rows with keys: {}'.format(columns))
-    comparers = [((itemgetter(col[1:].strip()), -1) if col.startswith('-') else (itemgetter(col.strip()), 1)) for col in columns]
-
-    def lowercasevalues(d):
-        newDict = OrderedDict()
-        for k, v in d.items():
-            if (isinstance(v, (str, basestring))):
-                v = v.lower()
-            newDict[k] = v
-        return newDict
-
-    def comparer(left, right):
-        for fn, mult in comparers:
-            result = cmp(fn(left), fn(right))
-            if result:
-                return mult * result
-        else:
-            return 0
-
-    if ignore_case:
-        sorted_items = sorted(items, cmp=comparer, key=lambda i: lowercasevalues(i))
-    else:
-        sorted_items = sorted(items, cmp=comparer, key=lambda i: i)
-        
-    _log.debug('Sorted rows: {}'.format(sorted_items))
-    return sorted_items
-
-
-
 def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, duration_seconds):
 
     token = None

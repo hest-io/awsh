@@ -15,7 +15,8 @@ services:
         HTTPS_PROXY: "${https_proxy}"
         no_proxy: "${no_proxy}"
         NO_PROXY: "${no_proxy}"
-    hostname: awsh-workspace
+    hostname: workspace
+    container_name: workspace
     network_mode: "host"
     entrypoint: /opt/awsh/lib/docker/entrypoint.sh tail -f /dev/null
     volumes:
