@@ -71,6 +71,7 @@ from collections import OrderedDict
 from awshutils.logger import AWSHLog
 from awshutils import check_imports
 from pprint import pprint as pp
+from functools import cmp_to_key
 
 ###############################################################################
 # CONFIG - Begin
@@ -399,8 +400,8 @@ try:
             }))
 
         # Sort the data
-        sorted_menu_dict = multikeysort(user_role_table, ['AWS Account', 'Role Name'])
-        sorted_internal_dict = multikeysort(internal_role_table, ['AWS Account', 'Role Name'])
+        sorted_menu_dict = sorted(user_role_table , key=lambda row: "{}{}".format(row['AWS Account'], row['Role Name']))
+        sorted_internal_dict = sorted(internal_role_table , key=lambda row: "{}{}".format(row['AWS Account'], row['Role Name']))
         
         if int(options['--role_index']) > 0:
             selectedroleindex = int(options['--role_index'])
