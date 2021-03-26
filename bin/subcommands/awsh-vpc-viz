@@ -63,10 +63,6 @@ LUT_ROUTETABLE_ORIGIN = {
 # CONFIG - End (Do Not Edit Below)
 ###############################################################################
 
-# Ensure encoding=utf8
-reload(sys)
-sys.setdefaultencoding('utf8')
-
 _log = AWSHLog(__file__)
 check_imports()
 colorama_init()
@@ -127,7 +123,7 @@ def gv_pprint(v):
 
 
 def gv_safe_id(v):
-    if hasattr(v, '__iter__'):
+    if hasattr(v, '__iter__') and hasattr(v, '__next__'):
         return [gv_safe_id(x) for x in v]
     else:
         return v.replace("-", "_") if v else "Unknown"
@@ -137,7 +133,7 @@ def gv_safe_name(v):
     try:
         return v.tags['Name']
     except (KeyError, AttributeError) as e:
-        return "Un-named"
+        return "NoName"
 
 
 def dict_replace(text, replacements):
