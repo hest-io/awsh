@@ -179,5 +179,5 @@ def json_to_properties(data, options=None):
 
 if __name__ == "__main__":
     for l in Json2Line().apply(json.load(sys.stdin)):
-        print l
+        print(l)
 
