@@ -46,32 +46,31 @@ Options:
 
 """
 
-from future.utils import iteritems
 
-import sys
-import boto.sts
-import boto.s3
-from botocore.exceptions import ClientError
-import requests
 import getpass
 import base64
-import json
-import xml.etree.ElementTree as ET
-import re
-import logging
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin
-from requests_kerberos import HTTPKerberosAuth, OPTIONAL
-import os
-import glob
 import docopt
-from tabulate import tabulate
-from operator import itemgetter, attrgetter
-from collections import OrderedDict
-from awshutils.logger import AWSHLog
+import glob
+import json
+import logging
+import os
+import re
+import requests
+import sys
+import xml.etree.ElementTree as ET
+from future.utils import iteritems
 from awshutils import check_imports
-from pprint import pprint as pp
+from awshutils.logger import AWSHLog
+from botocore.exceptions import ClientError
+from bs4 import BeautifulSoup
+from collections import OrderedDict
 from functools import cmp_to_key
+from operator import itemgetter, attrgetter
+from pprint import pprint as pp
+from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+from tabulate import tabulate
+from urllib.parse import urlparse, urljoin
+import boto3
 
 ###############################################################################
 # CONFIG - Begin
@@ -99,10 +98,10 @@ def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, 
 
         _log.debug('Requesting token with specified [{}] duration'.format(duration_seconds))
         token = connection.assume_role_with_saml(
-            role_arn,
-            principal_arn,
-            assertion,
-            duration_seconds=duration_seconds
+            RoleArn=role_arn,
+            PrincipalArn=principal_arn,
+            SAMLAssertion=assertion,
+            DurationSeconds=int(duration_seconds)
             )
 
     except boto.exception.BotoServerError as e:
@@ -113,14 +112,15 @@ def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, 
             _log.warn('Attempting request using fallback DurationSeconds [3600]')
 
             token = connection.assume_role_with_saml(
-                role_arn,
-                principal_arn,
-                assertion,
-                duration_seconds=3600
+                RoleArn=role_arn,
+                PrincipalArn=principal_arn,
+                SAMLAssertion=assertion,
+                DurationSeconds=3600
                 )
 
     except Exception as e:
         _log.error('An unhandled Exception occurred')
+        raise
 
     return token
 
@@ -378,7 +378,7 @@ try:
             print("Please choose the role you would like to assume:")
             print("")
             print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
-            print("Selection: ")
+            print("Selection: ", end='')
             selectedroleindex = input()
 
         # Basic sanity check of input
@@ -394,31 +394,30 @@ try:
         principal_arn = awsroles[0].split(',')[1]
 
     # Use the assertion to get an AWS STS token using Assume Role with SAML
-    conn = boto.sts.connect_to_region(aws_region)
-
+    sts_client = boto3.client('sts', region_name=aws_region)
 
     token = get_sts_token_with_duration(
-        conn,
+        sts_client,
         role_arn,
         principal_arn,
         assertion,
         duration_seconds=options['--token_duration']
     )
 
-    if token is not None:
+    if token is not None and token.get('Credentials') is not None:
 
         _log.debug('Dumping STS Token')
-        _log.debug('aws_access_key_id {}'.format(token.credentials.access_key))
-        _log.debug('aws_secret_access_key {}'.format(token.credentials.secret_key))
-        _log.debug('aws_session_token {}'.format(token.credentials.session_token))
-        _log.debug('aws_token_expiry {}'.format(token.credentials.expiration))
+        _log.debug('aws_access_key_id {}'.format(token.get('Credentials').get('AccessKeyId')))
+        _log.debug('aws_secret_access_key {}'.format(token.get('Credentials').get('SecretAccessKey')))
+        _log.debug('aws_session_token {}'.format(token.get('Credentials').get('SessionToken')))
+        _log.debug('aws_token_expiry {}'.format(token.get('Credentials').get('Expiration')))
 
         # Write the updated config file
         with open(aws_config_file, 'w+') as f:
-            f.write('aws_access_key_id {}\n'.format(token.credentials.access_key))
-            f.write('aws_secret_access_key {}\n'.format(token.credentials.secret_key))
-            f.write('aws_session_token {}\n'.format(token.credentials.session_token))
-            f.write('aws_token_expiry {}\n'.format(token.credentials.expiration))
+            f.write('aws_access_key_id {}\n'.format(token.get('Credentials').get('AccessKeyId')))
+            f.write('aws_secret_access_key {}\n'.format(token.get('Credentials').get('SecretAccessKey')))
+            f.write('aws_session_token {}\n'.format(token.get('Credentials').get('SessionToken')))
+            f.write('aws_token_expiry {}\n'.format(token.get('Credentials').get('Expiration')))
             f.close()
 
         sys.exit(0)

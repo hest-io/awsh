@@ -126,7 +126,7 @@ function _aws_load_mfaauth_credentials {
     AWS_SECRET_ACCESS_KEY="$(grep -h aws_secret_access_key "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SECURITY_TOKEN="$(grep -h -i aws_security_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SESSION_TOKEN="$(grep -h -i aws_security_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
-    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2}')"
+    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2, $3}')"
 
     _screen_note "AWS_MFA_ID............. $AWS_MFA_ID"
 
