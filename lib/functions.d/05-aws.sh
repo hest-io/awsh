@@ -126,7 +126,7 @@ function _aws_load_mfaauth_credentials {
     AWS_SECRET_ACCESS_KEY="$(grep -h aws_secret_access_key "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SECURITY_TOKEN="$(grep -h -i aws_security_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SESSION_TOKEN="$(grep -h -i aws_security_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
-    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2, $3}')"
+    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2}')"
 
     _screen_note "AWS_MFA_ID............. $AWS_MFA_ID"
 
@@ -181,7 +181,7 @@ function _aws_load_krb5formauth_credentials {
     AWS_SECRET_ACCESS_KEY="$(grep -h aws_secret_access_key "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SECURITY_TOKEN="$(grep -h -i aws_session_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
     AWS_SESSION_TOKEN="$(grep -h -i aws_session_token "$AWS_CONFIG_FILE" | awk '{print $2}')"
-    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2}')"
+    AWS_TOKEN_EXPIRY_DATETIME="$(grep -h -i aws_token_expiry "$AWS_CONFIG_FILE" | awk '{print $2, $3}')"
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
