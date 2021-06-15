@@ -28,7 +28,7 @@ before_script:
     # We are just playing with Docker here.
     # We do not need GitLab to clone the source code.
     GIT_STRATEGY: none
-    DOCKER_FILE: "docker/Dockerfile.py3_alpine"
+    DOCKER_FILE: ".docker/Dockerfile.py3_alpine"
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
   stage: build
   script:
@@ -39,8 +39,7 @@ before_script:
       docker build
       --cache-from $CI_REGISTRY_IMAGE:latest
       --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
-      -f "${CI_PROJECT_DIR}/${DOCKER_FILE}"
-      "${CI_PROJECT_DIR}"
+      --file "${CI_PROJECT_DIR}/${DOCKER_FILE}" .
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
 
 
@@ -72,7 +71,7 @@ build-image-alpine:
   extends:
     - .build_image
   variables:
-    DOCKER_FILE: "docker/Dockerfile.py3_alpine"
+    DOCKER_FILE: ".docker/Dockerfile.py3_alpine"
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
 
 

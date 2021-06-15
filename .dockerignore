@@ -3,7 +3,8 @@ local/
 *.sublime*
 tmp/
 log/
-Dockerfile
+.docker/
+requirements/
 Vagrantfile
 doc/
 .gitignore
