@@ -188,7 +188,7 @@ exec 4>&-
 
 
 # Iterate through each of the AWS Regions for the remaining known resource types
-region_list="$(aws ec2 describe-regions --output=text | awk '{print $3}')"
+region_list=$(aws ec2 describe-regions | jq -r '.Regions[] | .RegionName')
 current_region=$AWS_DEFAULT_REGION
 
 for region in $region_list; do
