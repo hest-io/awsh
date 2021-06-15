@@ -387,6 +387,7 @@ function _aws_show_credentials {
     if _aws_is_authenticated ; then
         echo "--snip--"
         env | grep -E "^AWS_SECRET_ACCESS_KEY|^AWS_DEFAULT_REGION|^AWS_SESSION_TOKEN|^AWS_ACCESS_KEY_ID|^AWS_SECURITY_TOKEN"
+        echo "export AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION AWS_SESSION_TOKEN AWS_ACCESS_KEY_ID AWS_SECURITY_TOKEN"
         echo "--snip--"
     else
         _screen_error 'This command requires an active AWS session. Login first please!'
