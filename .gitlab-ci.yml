@@ -55,7 +55,7 @@ before_script:
     - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} ${CI_REGISTRY_IMAGE}:${IMAGE_TAG}
     - docker push ${CI_REGISTRY_IMAGE}:${IMAGE_TAG}
     # We also want to push the ${IMAGE_TAG} release into DockerHub
-    - docker login --username ${DOCKERHUB_REGISTRY_LOGIN} --password ${DOCKERHUB_REGISTRY_PASS}
+    - echo -n ${DOCKERHUB_REGISTRY_PASS} | docker login -u ${DOCKERHUB_REGISTRY_LOGIN} --password-stdin ${DOCKERHUB_REGISTRY}
     - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} ${DOCKERHUB_IMAGE}:${IMAGE_TAG}
     - docker push ${DOCKERHUB_IMAGE}:${IMAGE_TAG}
 
