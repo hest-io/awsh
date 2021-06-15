@@ -39,7 +39,7 @@ before_script:
       docker build
       --cache-from $CI_REGISTRY_IMAGE:latest
       --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
-      -f "${DOCKER_FILE}"
+      -f "${CI_PROJECT_DIR}/${DOCKER_FILE}"
       "${DOCKER_BUILD_CONTEXT}"
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
 
