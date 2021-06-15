@@ -25,9 +25,6 @@ before_script:
 
 .build_image:
   variables:
-    # We are just playing with Docker here.
-    # We do not need GitLab to clone the source code.
-    GIT_STRATEGY: none
     DOCKER_FILE: ".docker/Dockerfile.py3_alpine"
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
   stage: build
