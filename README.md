@@ -1,13 +1,17 @@
 # AWSH: AWesome SHell for Cloud
 
-AWS Shell: Load and use your AWS identities with all your favorite AWS tools
+[![GitHub license](https://img.shields.io/github/license/hest-io/awsh.svg?style=flat-square)](https://github.com/hest-io/awsh/blob/master/LICENSE)
+[![GitHub changelog](https://img.shields.io/badge/documentation-ONLINE-651fff.svg?style=flat-square)](http://worx.docs.hest.io/awsh/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/hestio/awsh.svg)](https://hub.docker.com/r/hestio/awsh)
 
-## What is AWSH and how can it help me?
+## What is AWSH?
 
-The AWSH tools are a collection of Python and BASH helper scripts that are intended to augment your existing interaction with AWS by;
+![showcase](docs/media/images/awsh-terminal-on-windows-wsl.png)
 
-- Helping with the loading of AWS credentials into the environment that can be re-used by all of your existing AWS toolset; Terraform, AWS CLI, Terraforming, Ansible, etc
-- Helping to generate useful information about existing resources you already have on AWS in a format that can be used as part of a pipeline for other tools/apps
+- Lightweight containerized Shell with AWS tools inside
+- Aimed at providing a shell equivalent for AWS Console
+- Login to AWS, Assume Roles, Switch AWS Accounts and Regions with ease
+- Great for users, developers and organisations that have to work with many AWS Accounts
 
 
 ## Docker by default
@@ -43,7 +47,7 @@ This should make it easier for you to use the latest version and make it easier 
         --network=host \
         -v ${HOME}/.awsh:/home/awsh/.awsh \
         -v ${HOME}:/workspace \
-        -v /tmp:/tmp \        
+        -v /tmp:/tmp \
         hestio/awsh
     ```
 
