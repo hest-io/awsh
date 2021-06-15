@@ -11,7 +11,6 @@ stages:
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
   DOCKERHUB_IMAGE: "hestio/awsh"
-  DOCKER_BUILD_CONTEXT: "."
 
 services:
   - docker:dind
@@ -41,9 +40,8 @@ before_script:
       --cache-from $CI_REGISTRY_IMAGE:latest
       --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
       -f "${CI_PROJECT_DIR}/${DOCKER_FILE}"
-      "${DOCKER_BUILD_CONTEXT}"
+      "${CI_PROJECT_DIR}"
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
-
 
 
 # Here, the goal is to tag the "master" branch as "latest"
