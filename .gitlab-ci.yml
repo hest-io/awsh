@@ -2,7 +2,7 @@
 
 # do not use "latest" here, if you want this to work in the future
 image:
-  name: docker:18
+  name: docker:19
 
 stages:
   - build
