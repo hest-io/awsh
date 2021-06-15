@@ -4,7 +4,6 @@ local/
 tmp/
 log/
 .docker/
-requirements/
 Vagrantfile
 doc/
 .gitignore
