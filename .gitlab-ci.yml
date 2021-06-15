@@ -11,7 +11,6 @@ stages:
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
   DOCKERHUB_IMAGE: "hestio/awsh"
-  DOCKER_FILE: "Dockerfile.python3"
   DOCKER_BUILD_CONTEXT: "."
 
 services:
@@ -25,16 +24,37 @@ before_script:
 # Task Templates
 ###############################################################################
 
+.build_image:
+  variables:
+    # We are just playing with Docker here.
+    # We do not need GitLab to clone the source code.
+    GIT_STRATEGY: none
+    DOCKER_FILE: "docker/Dockerfile.py3_alpine"
+    IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
+  stage: build
+  script:
+    # fetches the latest image (not failing if image is not found)
+    - docker pull $CI_REGISTRY_IMAGE:latest || true
+    - >
+      docker build
+      --cache-from $CI_REGISTRY_IMAGE:latest
+      --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+      -f "${DOCKER_FILE}"
+      "${DOCKER_BUILD_CONTEXT}"
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+
+
+
 # Here, the goal is to tag the "master" branch as "latest"
 .push_image:
   variables:
-    # We are just playing with Docker here. 
+    # We are just playing with Docker here.
     # We do not need GitLab to clone the source code.
     GIT_STRATEGY: none
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
   stage: push
   script:
-    # Because we have no guarantee that this job will be picked up by the same runner 
+    # Because we have no guarantee that this job will be picked up by the same runner
     # that built the image in the previous step, we pull it again locally
     - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
     - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA} ${CI_REGISTRY_IMAGE}:${IMAGE_TAG}
@@ -49,18 +69,12 @@ before_script:
 # Tasks
 ###############################################################################
 
-build-image:
-  stage: build
-  script:
-    # fetches the latest image (not failing if image is not found)
-    - docker pull $CI_REGISTRY_IMAGE:latest || true  
-    - >
-      docker build
-      --cache-from $CI_REGISTRY_IMAGE:latest
-      --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
-      -f "${DOCKER_FILE}" 
-      "${DOCKER_BUILD_CONTEXT}"
-    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+build-image-alpine:
+  extends:
+    - .build_image
+  variables:
+    DOCKER_FILE: "docker/Dockerfile.py3_alpine"
+    IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
 
 
 # Here, the goal is to tag the "master" branch as "latest"
