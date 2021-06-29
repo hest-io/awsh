@@ -16,22 +16,22 @@ Usage:
 
 
 Arguments:
-    --region <region>   
+    --region <region>
         The AWS Region to auth against
-    --params <params>   
-        A JSON dictionary of parameters that are needed for form based 
-        authentication. A value of '<ask>' can be used to trigger 
-        reading the value at runtime from the user. A value of 
-        '<password>' can be used to trigger reading the value at runtime 
+    --params <params>
+        A JSON dictionary of parameters that are needed for form based
+        authentication. A value of '<ask>' can be used to trigger
+        reading the value at runtime from the user. A value of
+        '<password>' can be used to trigger reading the value at runtime
         securely
-    --idp_url <idp_url> 
+    --idp_url <idp_url>
         The IDP/SAML URL that is used to trigger authentication
-    --principal <principal>  
+    --principal <principal>
         The identity to authenticate with in the form of user@REALM
-    --creds_cache <creds_cache>          
+    --creds_cache <creds_cache>
         The filename to store credentials in if successful
-    --token_duration <token_duration>     
-        The duration in seconds that a requested token is valid for from the 
+    --token_duration <token_duration>
+        The duration in seconds that a requested token is valid for from the
         time of successful authentication [default: 14400]
     --role_index <role_index>
         A predefined numeric entry to select from the list of available IAM
@@ -41,7 +41,7 @@ Options:
     --sslverify
         Whether or not to validate the SSL cert from the SAML URL. Generally
         not recommended for URLs using self-signed certificates
-    --debug           
+    --debug
         More verbose (usually debug) logging and output
 
 """
@@ -61,7 +61,7 @@ import xml.etree.ElementTree as ET
 from future.utils import iteritems
 from awshutils import check_imports
 from awshutils.logger import AWSHLog
-from botocore.exceptions import ClientError
+import botocore
 from bs4 import BeautifulSoup
 from collections import OrderedDict
 from functools import cmp_to_key
@@ -101,13 +101,13 @@ def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, 
             RoleArn=role_arn,
             PrincipalArn=principal_arn,
             SAMLAssertion=assertion,
-            DurationSeconds=int(duration_seconds)
+            DurationSeconds=43200
             )
 
-    except boto.exception.BotoServerError as e:
+    except botocore.exceptions.ClientError as e:
 
         token_too_large_message = 'The requested DurationSeconds exceeds the MaxSessionDuration set for this role.'
-        if token_too_large_message == e.message:
+        if token_too_large_message == e.response['Error']['Message']:
             _log.error('The requested DurationSeconds [{}] exceeds the MaxSessionDuration set for this role'.format(duration_seconds))
             _log.warn('Attempting request using fallback DurationSeconds [3600]')
 
@@ -117,6 +117,10 @@ def get_sts_token_with_duration(connection, role_arn, principal_arn, assertion, 
                 SAMLAssertion=assertion,
                 DurationSeconds=3600
                 )
+
+        else:
+            # Surface the error message from AWS at a minimum
+            _log.error(e.response['Error']['Message'])
 
     except Exception as e:
         _log.error('An unhandled Exception occurred')
@@ -312,7 +316,7 @@ try:
     kvp_tuple = lambda x: x.split('=', 1)
     for f in metadata_files:
         lines = [ line.rstrip('\n') for line in open(f) ]
-        account_number = os.path.basename('{}'.format(f).rstrip('.awsh'))        
+        account_number = os.path.basename('{}'.format(f).rstrip('.awsh'))
         lut_metadata[account_number] = { kvp_tuple(line)[0]: kvp_tuple(line)[1] for line in lines if line }
         _log.debug('Loaded metadata for Account {} from {}'.format(account_number, f))
 
@@ -371,10 +375,10 @@ try:
         # Sort the data
         sorted_menu_dict = sorted(user_role_table , key=lambda row: "{}{}".format(row['AWS Account'], row['Role Name']))
         sorted_internal_dict = sorted(internal_role_table , key=lambda row: "{}{}".format(row['AWS Account'], row['Role Name']))
-        
+
         if int(options['--role_index']) > 0:
             selectedroleindex = int(options['--role_index'])
-        else:        
+        else:
             print("Please choose the role you would like to assume:")
             print("")
             print(tabulate(sorted_menu_dict, headers='keys', tablefmt='simple', showindex=True))
