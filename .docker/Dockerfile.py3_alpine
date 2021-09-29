@@ -101,6 +101,9 @@ RUN \
 # Build the config for fixuid
 COPY /lib/docker/fixuid.yml /etc/fixuid/config.yml
 
+# Add sudo permissions to allow users to make changes if needed inside the container
+RUN echo 'awsh ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
 ###############################################################################
 # Main Docker image assembly for AWSH
 ###############################################################################

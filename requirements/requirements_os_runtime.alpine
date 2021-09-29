@@ -27,6 +27,7 @@ ttf-freefont
 util-linux
 util-linux-bash-completion
 wget
+sudo
 
 # Ruby runtime dependencies for the Terraforming tool
 ruby
