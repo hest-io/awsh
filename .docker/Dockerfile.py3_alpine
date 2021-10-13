@@ -76,6 +76,8 @@ RUN \
     ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} -r "${AWSH_ROOT}/tmp/install/${AWSH_PYTHON_RUNTIME_DEPS}" && \
     # Add monkeypatch for https://github.com/boto/boto/pull/3699. #NCFOR
     ${CMD_PIP} install --upgrade git+https://github.com/wtsi-hgi/boto@fix/3561-py3-proxy-ssl-connection  && \
+    # Add beta support for the wonder AWS Google Auth tool with support for AWSH
+    ${CMD_PIP} install --upgrade git+https://github.com/hest-io/aws-google-auth.git@hestio-awsh  && \
     # remove the build tools
     apk del build-dependencies && \
     # Add Terraforming Ruby tool

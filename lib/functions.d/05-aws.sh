@@ -194,6 +194,56 @@ function _aws_load_krb5formauth_credentials {
 }
 
 
+# Helper function to get API keys using MFA token
+function _aws_load_googleauth_credentials {
+
+    # Load the INI config and make it available for use
+    _config_ini_parser "${1}"
+    cfg.section.default
+
+    AWS_DEFAULT_REGION="${region}"
+    REQUESTED_TOKEN_DURATION="${token_duration:-$DEFAULT_TOKEN_DURATION}"
+    AWS_ACCESS_KEY_ID="${aws_access_key_id}"
+    AWS_SECRET_ACCESS_KEY="${aws_secret_access_key}"
+
+    # Load the google stuff
+    cfg.section.google
+
+    AWS_USER_ID="${google_username}"
+    AWS_CONFIG_FILE=$(mktemp /tmp/awsgoogleXXXX)
+
+    _screen_note "${__fg_red}GOOGLE Account Detected... ${__no_color}"
+    _screen_note "Requesting Token for... ${REQUESTED_TOKEN_DURATION}s"
+
+    aws-google-auth \
+        --username "${google_username}" \
+        --idp-id "${google_idp_id}" \
+        --sp-id "${google_sp_id}" \
+        --duration "${REQUESTED_TOKEN_DURATION}" \
+        --region "${AWS_DEFAULT_REGION}" \
+        --output "${AWS_CONFIG_FILE}" \
+        --resolve-aliases \
+        --no-credentials-update \
+        --ask-role
+
+    . "${AWS_CONFIG_FILE}"
+
+    AWS_TOKEN_EXPIRY_DATETIME="${AWS_SESSION_EXPIRATION}"
+
+    _screen_note "AWS_USER_ID............ $AWS_USER_ID"
+
+    # Now set the token expiry time so that it can be used for the PS1 prompt
+    let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
+    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
+    _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
+
+    export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
+    export AWS_USER_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
+
+}
+
+
+
 function _aws_login {
 
     local aws_id_name="$1"
@@ -288,6 +338,9 @@ function _aws_login {
     elif grep -q "aws_idp" "$AWS_CONFIG_FILE"; then
         # Check if we have IDP to process
         _aws_load_krb5formauth_credentials "${AWS_CONFIG_FILE}" "${aws_role_idx}"
+    elif grep -q "token_plugin=google" "$AWS_CONFIG_FILE"; then
+        # Check if we have IDP to process
+        _aws_load_googleauth_credentials "${AWS_CONFIG_FILE}"
     else
         # If we haven't matched one of the earlier patterns
         _aws_load_basic_credentials "${AWS_CONFIG_FILE}"

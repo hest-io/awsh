@@ -37,3 +37,7 @@ ruby-dev
 ruby-irb
 ruby-json
 ruby-rake
+
+# For Google auth support
+py3-lxml
+py3-pillow

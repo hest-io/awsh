@@ -10,6 +10,7 @@ function _config_ini_parser {
     fixed_file=$(cat "$1" | grep -v -e "^$" -e"^ *#" -e "^#" | sed -r -e 's/(\S*)(\s*)=(\s*)(.*)/\1=\4/g' ) # fix spaces either side of the '='
     IFS=$'\n' && ini=( $fixed_file )         # convert to line-array
     ini=( ${ini[*]//;*/} )                   # remove ';' comments
+    ini=( ${ini[*]//\#*/} )                  # remove '#' comments
     ini=( ${ini[*]/#[/\}$'\n'cfg.section.} ) # set section prefix
     ini=( ${ini[*]/%]/ \(} )                 # convert text2function (1)
     ini=( ${ini[*]/=/=\( } )                 # convert item to array
