@@ -22,12 +22,13 @@ py3-python-gssapi
 python3
 shadow
 sshpass
+sudo
 tar
 ttf-freefont
+tzdata
 util-linux
 util-linux-bash-completion
 wget
-sudo
 
 # Ruby runtime dependencies for the Terraforming tool
 ruby
