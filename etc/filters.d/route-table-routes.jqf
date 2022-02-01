@@ -1,0 +1,15 @@
+#cmd: ec2 describe-route-tables
+#sort: Name,RouteTableID
+
+.RouteTables[] |
+    .RouteTableId as $tbl_id |
+    .Tags as $tbl_tags |
+    .Routes[]
+    +
+    {
+        "RouteTableID": $tbl_id
+    }
+    +
+    (($tbl_tags // [])|from_entries)
+
+

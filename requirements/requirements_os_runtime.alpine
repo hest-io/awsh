@@ -3,6 +3,7 @@ bash
 ca-certificates
 coreutils
 curl
+gettext
 git
 git-diff-highlight
 graphviz
