@@ -224,6 +224,7 @@ function _aws_load_googleauth_credentials {
         --output "${AWS_CONFIG_FILE}" \
         --resolve-aliases \
         --no-credentials-update \
+        --save-failure-html \
         --ask-role
 
     . "${AWS_CONFIG_FILE}"
@@ -453,8 +454,8 @@ function _aws_logout {
     env \
         | grep '^AWS_' \
         | awk -F'=' '{print $1}' \
-        | xargs -i echo 'unset {}' > /tmp/aws-session-purge
-    source /tmp/aws-session-purge
+        | xargs -i echo 'unset {}' > "/tmp/.aws-session-purge-$(id -u)"
+    source "/tmp/.aws-session-purge-$(id -u)"
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         rm -f "${CREDENTIALS_CACHE}"
     fi
