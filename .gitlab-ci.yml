@@ -7,6 +7,7 @@ image:
 stages:
   - build
   - push
+  - trigger_downstream
 
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
@@ -90,3 +91,17 @@ push-label:
     # We want this job to be run on tags only.
     - tags
     - develop
+
+
+trigger_blox_pipeline:
+  stage: trigger_downstream
+  script:
+    - >
+      curl
+      -X POST
+      --fail
+      -F token=${BLOX_PIPELINE_TRIGGER_TOKEN}
+      -F ref=master
+      https://gitlab.com/api/v4/projects/24214318/trigger/pipeline
+  only:
+    - master
