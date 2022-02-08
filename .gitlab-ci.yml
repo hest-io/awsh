@@ -95,6 +95,8 @@ push-label:
 
 trigger_blox_pipeline:
   stage: trigger_downstream
+  before_script:
+    - apk add --update curl
   script:
     - >
       curl
