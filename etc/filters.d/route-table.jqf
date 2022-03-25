@@ -6,5 +6,5 @@
     Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
     RouteTableId,
     PropagatingVGWs: (.PropagatingVgws|join(", ")),
-    Associations: [(.Associations|.[]| (.SubnetId?) // "Main")] | join(", ")
+    Associations: [(.Associations|.[]| .RouteTableAssociationId as $rta | (.SubnetId // "Main")  + " (" + $rta +")"  )] | join(", ")
 }
