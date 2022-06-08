@@ -1,6 +1,6 @@
 #foreach: iam list-users | jq -r '.Users[] | .UserName'
 #cmd: iam list-access-keys --user-name=${item}
-#sort: Username,Status
+#sort: UserName,Status
 
 .[] | .AccessKeyMetadata[] 
 
