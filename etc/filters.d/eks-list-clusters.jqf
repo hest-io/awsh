@@ -1,0 +1,5 @@
+#cmd: eks list-clusters
+
+. | {
+	clusterName: .clusters[]
+}

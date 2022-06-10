@@ -1,0 +1,11 @@
+#cmd: batch describe-compute-environments
+#sort: computeEnvironmentName,type,state,status,computeResourceType
+
+.computeEnvironments[] | { 
+	computeEnvironmentName,
+	type,
+	state,
+	status,
+	computeResourceType: .computeResources.type
+
+}

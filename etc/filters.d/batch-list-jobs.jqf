@@ -1,0 +1,11 @@
+#foreach: batch describe-job-queues | jq -r '.jobQueues | .[] | .jobQueueName'
+#cmd: batch list-jobs --job-queue ${item}
+#tidy: awsh-arnchomp
+#sort: jobName,status
+
+
+.[] | .jobSummaryList[] | {
+	jobName,
+	status,
+	jobArn
+}
