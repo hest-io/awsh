@@ -30,3 +30,24 @@ AWS Shell: Load and use your AWS identities with all your favorite AWS tools
 
     ![Source](.devcontainer/docs/images/Selection_613.png)
 
+## Syntax highlighting for .jqf
+- install jq-syntax-highlighting extension in your VisualStudio Code
+- edit ~/.vscode/extensions/jq-syntax-highlighting.jq-syntax-highlighting-*/package.json
+- add to the list `.contributes.languages[].extensions` .jqf record
+    ```
+        [
+            {
+                "id": "jq",
+                "aliases": [
+                "jq",
+                "jq"
+                ],
+                "extensions": [
+                ".jq",
+                ".jqf"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ]
+     ```
+
