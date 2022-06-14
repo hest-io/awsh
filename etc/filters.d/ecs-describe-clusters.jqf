@@ -1,0 +1,17 @@
+#foreach: ecs list-clusters | jq -r '.clusterArns[]'
+#cmd:  ecs describe-clusters --cluster ${item}
+#tidy: awsh-arnchomp
+
+.[] | .clusters[] | {
+    clusterName,
+    status,
+    clusterArn,
+    registeredContainerInstancesCount,
+    runningTasksCount,
+    pendingTasksCount,
+    activeServicesCount,
+    statistics: [(.statistics[]? // "None")] | join(","),
+    settings: [(.settings[]? // "None")] | join(","),
+    capacityProviders: [(.capacityProviders[]? // "None")] | join(","),
+    defaultCapacityProviderStrategy: [(.defaultCapacityProviderStrategy[]? // "None")] | join(",")
+}
