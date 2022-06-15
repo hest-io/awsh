@@ -225,7 +225,9 @@ function _aws_load_googleauth_credentials {
         --resolve-aliases \
         --no-credentials-update \
         --save-failure-html \
-        --ask-role
+        --ask-role \
+        --bg-response "${bg_response}"
+
 
     . "${AWS_CONFIG_FILE}"
 
