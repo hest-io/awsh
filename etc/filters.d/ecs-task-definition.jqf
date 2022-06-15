@@ -1,0 +1,16 @@
+#foreach: ecs list-task-definitions | jq -r '.taskDefinitionArns[]'
+#cmd:  ecs describe-task-definition --task-definition ${item}
+#tidy: sed -E -e s/arn:(.*):(.*):(.*):(.*):(task-definition*)/\5/g;s/arn:(.*):(.*):(.*):(.*):(.*)/\5/g
+
+.[] | .taskDefinition | {
+    taskDefinitionArn,
+    status,
+    family,
+    executionRoleArn,
+    networkMode,
+    requiresAttributes: [(.requiresAttributes[].name)] | join("\n"),
+    compatibilities: .compatibilities | join(","),
+    requiresCompatibilities: .requiresCompatibilities | join(","),
+    cpu,
+    memory
+}

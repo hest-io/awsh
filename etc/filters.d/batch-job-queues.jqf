@@ -1,0 +1,13 @@
+#cmd: batch describe-job-queues
+#tidy: awsh-arnchomp
+#sort: jobQueueName, state
+
+.jobQueues[] | { 
+	jobQueueName,
+	state,
+	status,
+	jobQueueArn,
+	computeEnvironment: ( .computeEnvironmentOrder[].computeEnvironment )
+}
++
+( .tags // [])

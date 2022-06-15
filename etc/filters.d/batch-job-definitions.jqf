@@ -1,0 +1,17 @@
+#cmd: batch describe-job-definitions
+#sort: jobDefinitionName,status
+
+.jobDefinitions[] | { 
+	jobDefinitionName,
+	status,
+	type,
+	revision,
+	containerImage: (.containerProperties?.image // "None"),
+	containerCommand: ( ( .containerProperties?.command // ["None"]) | join(" ")),
+	platformCapabilities: .platformCapabilities | join(", "),
+	resourceRequirements: (.containerProperties? |  [(.resourceRequirements[]? | map(.) | join(":") ) ] | join(",") ),
+	jobDefinitionArn,
+	publicIP: ( .containerProperties.networkConfiguration.assignPublicIp )
+}
++
+( .tags // [])

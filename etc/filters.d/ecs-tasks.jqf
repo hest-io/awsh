@@ -1,0 +1,9 @@
+#foreach: ecs list-clusters | jq -r '.clusterArns[]'
+#cmd: ecs list-tasks --cluster ${item}
+#enrich: jq --arg item "${item}" '(.clusterName) = $item'
+#tidy: awsh-arnchomp
+
+.[] | {
+    clusterName,
+    taskArns: [(.taskArns[]? // "None")] | join(",")
+}

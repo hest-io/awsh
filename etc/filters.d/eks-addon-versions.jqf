@@ -1,0 +1,12 @@
+#cmd: eks describe-addon-versions
+#sort: addonName,type
+
+(
+    .addons[] | .addonName as $addonName | .type as $type |.addonVersions | .[]? | {
+        addonName: $addonName,
+        type: $type,
+        addonVersion: .addonVersion,
+		architecture: .architecture | join(","),
+		clusterVersion: (.compatibilities | map(.clusterVersion) | join(","))
+    }
+)
