@@ -32,6 +32,12 @@ export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_
 FV_TIMESTAMP_FORMAT='%Y-%m-%d_%H:%M:%S'
 export FV_TIMESTAMP_FORMAT
 
+##############################################################################
+# Aliases
+##############################################################################
+
+alias cat='bat --paging=never --style plain'
+
 ################################################################################
 # Bo not edit below
 ################################################################################
