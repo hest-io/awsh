@@ -32,7 +32,8 @@ ARG AWSH_GEM_INSTALL_ARGS="--no-document"
 ###############################################################################
 ARG SW_VER_TERRAFORMING="0.18.0"
 ARG SW_VER_WEBRICK="1.6.0"
-ARG SW_VER_FIXUID="0.4"
+ARG SW_VER_FIXUID="0.5.1"
+ARG SW_VER_STARSHIP="1.6.3"
 
 ###############################################################################
 # ENVs
@@ -99,6 +100,12 @@ RUN \
     chown root:root /usr/local/bin/fixuid && \
     chmod 4755 /usr/local/bin/fixuid && \
     mkdir -p /etc/fixuid
+
+# Install starship
+RUN \
+    curl -SsL "https://github.com/starship/starship/releases/download/v${SW_VER_STARSHIP}/starship-x86_64-unknown-linux-musl.tar.gz" | tar -C /usr/local/bin -xzf - && \
+    chown root:root /usr/local/bin/starship && \
+    chmod 0755 /usr/local/bin/starship
 
 # Build the config for fixuid
 COPY /lib/docker/fixuid.yml /etc/fixuid/config.yml
