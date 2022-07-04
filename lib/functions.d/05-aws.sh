@@ -26,6 +26,50 @@ function _aws_is_authenticated {
 }
 
 
+# Helper function to load simple API keys from the environment
+function _aws_load_sso_credentials {
+
+    AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
+
+    _screen_print_header_l2 "Paste SSO credentials below and then use CTRL+D"
+    cat > "${AWS_CONFIG_FILE}" | sed -e 's/^[ \t]*export[ \t]*//g'
+    echo 'AWS_DEFAULT_REGION="eu-west-1"' >> "${AWS_CONFIG_FILE}"
+
+    source "${AWS_CONFIG_FILE}"
+
+    # Now set the token expiry time so that it can be used for the PS1 prompt
+    let AWS_TOKEN_EXPIRY=$(date +"%s" --date "+1 hours")
+    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "+1 hour")
+
+    # Check to determine if we have a valid set of credentials for use
+    if _aws_is_authenticated ; then
+        _screen_note "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
+        _screen_note "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
+        _screen_note "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
+        _screen_note "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
+        _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
+
+        _aws_load_account_metadata
+        if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
+            AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        fi
+
+        # Add user id info to name
+        AWS_ID_PATH="${AWS_ID_NAME}/$(basename "$(aws sts get-caller-identity | jq -r '.Arn')")"
+        AWS_ID_NAME="${AWS_ID_PATH}"
+
+        export AWS_SSH_KEY AWS_ID_NAME
+        export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
+        export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
+
+        # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
+        # variables that are detected and used
+        unset AWS_CONFIG_FILE
+    fi
+
+}
+
+
 # Helper function to load simple API keys
 function _aws_load_basic_credentials {
 
@@ -363,7 +407,7 @@ function _aws_login {
         fi
 
         # Add user id info to name
-        AWS_ID_PATH="${AWS_ID_NAME}/$(awsh whoami | tail -1 | awk '{print $3}' | awsh-arnchomp)"
+        AWS_ID_PATH="${AWS_ID_NAME}/$(basename "$(aws sts get-caller-identity | jq -r '.Arn')")"
         AWS_ID_NAME="${AWS_ID_PATH}"
 
         export AWS_SSH_KEY AWS_ID_NAME
