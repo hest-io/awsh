@@ -30,6 +30,7 @@ tzdata
 util-linux
 util-linux-bash-completion
 wget
+bat
 
 # Ruby runtime dependencies for the Terraforming tool
 ruby

@@ -1,0 +1,9 @@
+#foreach: eks list-clusters | jq -r '.clusters[]'
+#cmd: eks list-nodegroups --cluster-name ${item}
+#enrich: jq --arg item "${item}" '(.clusterName) = $item'
+#sort: clusterName
+
+.[] | {
+	clusterName,
+	nodegroups: .nodegroups | join(",")
+}

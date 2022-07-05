@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+"""
+Simple utility to list S3 objects and size
+
+Usage:
+    awsh-cloudwatch-s3-info [options]
+    awsh-cloudwatch-s3-info ( -h | --help )
+
+Options:
+    -f, --format=<format>   Table format: plain, simple, github, grid, fancy_grid, pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki, moinmoin, youtrack, html, unsafehtml, latex, latex_raw, latex_booktabs, latex_longtable, textile, tsv [default: simple]
+    -h, --help              Show this help message and exit
+    --insecure              Don't validate SSL cert
+    --debug                 Show more verbose logging
+"""
+
+import boto3
+import enum
+from datetime import datetime, timedelta
+from tabulate import tabulate
+import pandas as pd
+from string import Template
+import json
+import docopt
+from future.utils import iteritems
+import logging
+import sys
+import urllib3
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+check_imports()
+
+# Template
+query_template = Template(
+    '{"Id": "$id", "MetricStat": { "Metric": { "Namespace": "AWS/S3", "MetricName": "$metricName", "Dimensions": [ {"Name": "BucketName", "Value": "$bucketName"}, {"Name": "StorageType", "Value": "$storageType"}]}, "Period": 86400, "Stat": "Average"}, "ReturnData": true}'
+)
+
+# Data for template
+template_data = [
+    ("BucketSizeBytes", "StandardStorage"),
+    ("BucketSizeBytes", "IntelligentTieringFAStorage"),
+    ("BucketSizeBytes", "IntelligentTieringIAStorage"),
+    ("BucketSizeBytes", "IntelligentTieringAAStorage"),
+    ("BucketSizeBytes", "IntelligentTieringAIAStorage"),
+    ("BucketSizeBytes", "IntelligentTieringDAAStorage"),
+    ("BucketSizeBytes", "StandardIAStorage"),
+    ("BucketSizeBytes", "StandardIASizeOverhead"),
+    ("BucketSizeBytes", "StandardIAObjectOverhead"),
+    ("BucketSizeBytes", "OneZoneIAStorage"),
+    ("BucketSizeBytes", "OneZoneIASizeOverhead"),
+    ("BucketSizeBytes", "ReducedRedundancyStorage"),
+    ("BucketSizeBytes", "GlacierInstantRetrievalStorage"),
+    ("BucketSizeBytes", "GlacierStorage"),
+    ("BucketSizeBytes", "GlacierStagingStorage"),
+    ("BucketSizeBytes", "GlacierObjectOverhead"),
+    ("BucketSizeBytes", "GlacierS3ObjectOverhead"),
+    ("BucketSizeBytes", "DeepArchiveStorage"),
+    ("BucketSizeBytes", "DeepArchiveObjectOverhead"),
+    ("BucketSizeBytes", "DeepArchiveS3ObjectOverhead"),
+    ("BucketSizeBytes", "DeepArchiveStagingStorage"),
+    ("NumberOfObjects", "AllStorageTypes"),
+]
+
+# SizeUnit class
+class SIZE_UNIT(enum.Enum):
+    BYTES = 1
+    KB = 2
+    MB = 3
+    GB = 4
+
+
+# Convert bytes to other units
+def convert_unit(size_in_bytes, unit):
+    if unit == SIZE_UNIT.KB:
+        return size_in_bytes / 1024
+    elif unit == SIZE_UNIT.MB:
+        return size_in_bytes / (1024 * 1024)
+    elif unit == SIZE_UNIT.GB:
+        return size_in_bytes / (1024 * 1024 * 1024)
+    else:
+        return size_in_bytes
+
+
+# Convert bytes to human redable format
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
+
+# Get bucket location
+def bucket_location(bucket, ssl_verification):
+    s3 = boto3.client("s3", verify=ssl_verification)
+    response = s3.get_bucket_location(Bucket=bucket)
+    if response["LocationConstraint"] is None:
+        return "us-east-1"
+    return response["LocationConstraint"]
+
+
+# Query CloudWatch for bucket information
+def get_buckets_info(ssl_verification):
+    # Get bucket list
+    s3 = boto3.client("s3", verify=ssl_verification)
+    buckets = s3.list_buckets()
+    bucket_data = {}
+    buckets_data = {}
+    query = ""
+    for bucket in buckets["Buckets"]:
+        # Create CloudWatch boto client for bucket region
+        cloudwatch = boto3.client(
+            "cloudwatch", region_name=bucket_location(bucket["Name"], ssl_verification)
+        )
+        # Preapare query
+        query = [
+            json.loads(
+                query_template.substitute(
+                    id=i[1].lower(),
+                    metricName=i[0],
+                    bucketName=bucket["Name"],
+                    storageType=i[1],
+                )
+            )
+            for i in template_data
+        ]
+
+        # List metrics through the pagination interface
+        paginator = cloudwatch.get_paginator("get_metric_data")
+        for response in paginator.paginate(
+            MetricDataQueries=query,
+            StartTime=datetime.now() - timedelta(days=3),
+            EndTime=datetime.now(),
+            ScanBy="TimestampDescending",
+            LabelOptions={"Timezone": "+0000"},
+        ):
+            bucket_data[bucket["Name"]] = response
+    for bucket in bucket_data:
+        buckets_data[bucket] = {"Objects": 0, "SizeB": 0.0, "Size": 0, "SizeGB": 0}
+        for metric in bucket_data[bucket]["MetricDataResults"]:
+            if metric["Id"] == "allstoragetypes":
+                if metric["Values"]:
+                    buckets_data[bucket]["Objects"] = metric["Values"][0]
+                else:
+                    buckets_data[bucket]["Objects"] = 0
+            else:
+                if metric["Values"]:
+                    buckets_data[bucket]["SizeB"] += metric["Values"][0]
+        buckets_data[bucket]["SizeGB"] = round(
+            convert_unit(buckets_data[bucket]["SizeB"], SIZE_UNIT.GB), 2
+        )
+        buckets_data[bucket]["Size"] = sizeof_fmt(buckets_data[bucket]["SizeB"])
+        del buckets_data[bucket]["SizeB"]
+
+    return buckets_data
+
+
+# main program function
+def main(options):
+    if options["--debug"] is True:
+        import logging
+
+        _log.setLevel(logging.DEBUG)
+
+    if options["--insecure"] is True:
+        _log.debug("Attempting to disable SSL Verify Warnings")
+
+    for key, value in iteritems(options):
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    try:
+        ssl_verification = not options["--insecure"]
+
+        df = pd.DataFrame(get_buckets_info(ssl_verification))
+        print(
+            tabulate(
+                df.T,
+                headers=["Name", "Objects", "Size", "SizeGB"],
+                tablefmt=options["--format"],
+            )
+        )
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    except docopt.DocoptExit:
+        sys.exit(__doc__)

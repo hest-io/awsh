@@ -128,7 +128,12 @@ function awsh {
         ;;
 
         credentials|creds)
-            _aws_show_credentials
+            if [[ "$1" == "load" ]]; then
+                _aws_load_sso_credentials
+            else
+                _aws_show_credentials
+            fi
+
         ;;
 
         session-save)
