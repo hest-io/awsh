@@ -1,0 +1,6 @@
+#foreach: ecs list-clusters | jq -r '.clusterArns[]'
+#cmd:  ecs list-attributes --target-type container-instance --cluster ${item}
+#enrich: jq --arg item "${item}" '(.attributes[].clusterName) = $item'
+#tidy: awsh-arnchomp
+
+.[]  | .[] | .[]

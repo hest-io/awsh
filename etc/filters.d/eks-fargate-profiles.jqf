@@ -1,0 +1,8 @@
+#foreach: eks list-clusters | jq -r '.clusters[]'
+#cmd: eks list-fargate-profiles  --cluster-name ${item}
+#enrich: jq --arg item "${item}" '(.clusterName) = $item'
+
+.[] | {
+	clusterName,
+	profileNames: .fargateProfileNames | join(",")
+}

@@ -1,0 +1,10 @@
+#foreach: eks list-clusters | jq -r '.clusters[]'
+#cmd: eks list-identity-provider-configs  --cluster-name ${item}
+#enrich: jq --arg item "${item}" '(.identityProviderConfigs[].clusterName) = $item'
+#sort: name,type,clusterName
+
+.[] | .identityProviderConfigs[] | {
+	name,
+	type,
+	clusterName
+}

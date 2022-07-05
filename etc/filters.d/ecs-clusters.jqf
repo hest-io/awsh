@@ -1,0 +1,5 @@
+#cmd: ecs list-clusters
+
+. | {
+	clusterArn: .clusterArns[]
+}
