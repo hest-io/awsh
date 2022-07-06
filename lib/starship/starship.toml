@@ -1,0 +1,90 @@
+# A continuation prompt that displays two filled in arrows
+continuation_prompt = "▶▶"
+
+format = """
+${custom.WORX_PROMPT_MARKER}\
+$time\
+$env_var\
+${custom.WORX_AWS_TOKEN_EXPIRY} \
+$directory\
+$line_break\
+$git_branch\
+$git_commit\
+$git_state\
+$git_status\
+$status\
+$character"""
+
+[directory]
+truncation_length = 3
+truncation_symbol = "…/"
+truncate_to_repo = true
+home_symbol = "~"
+read_only = "🔒"
+format = "[$path]($style)[$read_only]($read_only_style) "
+# style = "black bold dimmed"
+
+[time]
+disabled = false
+time_format = "%T"
+format = "[ ](bg:#AF87FF fg:#5f00ff)[$time ](bg:#AF87FF fg:#000000)"
+
+[custom.WORX_PROMPT_MARKER]
+when = "true"
+format = "[ AWSH ](bg:#5f00ff fg:#ffffff)"
+description = "The begining of the AWSH prompt"
+
+[env_var.WORX_AWS_ID_NAME]
+variable = "AWS_ID_NAME"
+format = "[ ](bg:#AF00FF fg:#AF87FF)[$env_value ](bg:#AF00FF fg:#ffffff)"
+
+[env_var.WORX_AWS_DEFAULT_REGION]
+variable = "AWS_DEFAULT_REGION"
+format = "[ ](bg:#D7AFFF fg:#AF00FF)[$env_value ](bg:#D7AFFF fg:#000000)"
+
+[custom.WORX_AWS_TOKEN_EXPIRY]
+when = """ test "$AWS_SESSION_EXPIRATION" """
+command = """ /opt/awsh/lib/starship/aws-token-expiry "${AWS_SESSION_EXPIRATION}" """
+format = "[ ](bg:#000000 fg:#D7AFFF)$output"
+
+
+[git_branch]
+symbol = " "
+truncation_symbol = ""
+style = "bg:#00875f fg:#121212"
+format = "[ $symbol$branch ]($style)"
+
+[git_commit]
+disabled = false
+commit_hash_length = 7
+format = '[[](bg:#00875f fg:#464347)\($hash\)[](bg:#464347 fg:#00875f)]($style)'
+style = "bg:#00875f fg:black"
+only_detached = true
+
+[git_state]
+disabled = false
+rebase = "REBASING"
+merge = "MERGING"
+revert = "REVERTING"
+cherry_pick = "CHERRY-PICKING"
+bisect = "BISECTING"
+am = "AM"
+am_or_rebase = "AM/REBASE"
+style = "bg:yellow fg:black"
+format = '\([[](bg:yellow fg:#464347)$state( $progress_current/$progress_total )[](bg:#464347 fg:yellow)]($style)\)'
+
+[git_status]
+disabled = false
+format = '([[](bg:red fg:#464347)\[$all_status$ahead_behind\][](bg:#464347 fg:red)]($style))'
+style = "bg:red fg:black"
+stashed = '\$'
+ahead = "⇡"
+behind = "⇣"
+diverged = "⇕"
+conflicted = "="
+deleted = "✘"
+renamed = "»"
+modified = "!"
+staged = "+"
+untracked = "?"
+

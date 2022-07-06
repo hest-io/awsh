@@ -7,7 +7,7 @@ function _firstrun {
     echo ""
     echo "AWSH: Welcome!"
     echo ""
-    echo "  Documentation   : https://www.hest.io/awsh/docs/"
+    echo "  Documentation   : https://worx.hest.io/awsh/"
     echo "  Found an issue? : https://github.com/hest-io/awsh/issues"
 
     mkdir -p ~/.awsh/config.d/

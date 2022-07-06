@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+#
+# A simple helper script to calculate the AWS token expiry duration
+
+##############################################################################
+# Shell Behaviour
+##############################################################################
+
+# Check for unbound variables being used
+# set -o nounset
+
+# Exit is a bad command is attempted. If you're going to handle errors then
+# leave this disabled
+# set -o errexit
+
+# The return value of a pipeline is the status of the last command to exit with
+# a non-zero status, or zero if no command exited with a non-zero status
+# set -o pipefail
+
+##############################################################################
+# Variables
+##############################################################################
+
+CONST_COMMAND_LINE="$@"
+CONST_OS_VERSION=$(uname -r)
+CONST_SYSTEM_TYPE=$(uname -m)
+CONST_SCRIPT_NAME=${0##*/}
+
+# Default for AWSH_ROOT if unset
+: "${AWSH_ROOT:='/opt/awsh'}"
+
+##############################################################################
+# Main Script
+##############################################################################
+
+__bold='\e[1m'
+# Text Underline
+__underline='\e[4m'
+
+# Color Reset
+__reset='\e[0m'
+__no_color='\e[0m'
+
+# Color escape prefixes
+__color_start="\\033["
+__color_end="m"
+__fg="38;5;"
+__bg="48;5;"
+__bg_transparent="49;"
+
+# Colors
+__black="000"
+__grey="008"
+__gray="008"
+__red="009"
+__green="010"
+__dark_green="022"
+__yellow="011"
+__blue="012"
+__pink="013"
+__cyan="014"
+__white="015"
+__light_orange="208"
+__dark_orange="202"
+__purple="089"
+
+# Hestio brand colors
+__awsh_brand_bg="056"
+__awsh_brand_fg="015"
+__awsh_datetime_bg="141"
+__awsh_datetime_fg="000"
+__awsh_account_bg="129"
+__awsh_account_fg="015"
+__awsh_region_bg="183"
+__awsh_region_fg="000"
+
+
+##############################################################################
+# Functions
+##############################################################################
+
+# Encode the color FG and BG colors
+function _screen_encode_color {
+
+    local -r c_bg=$1
+    local -r c_fg=$2
+    echo "${__color_start}${__bg}${c_bg};${__fg}${c_fg}${__color_end}"
+
+}
+
+__awstoken_valid_segment="$(_screen_encode_color ${__dark_green} ${__awsh_brand_fg})"
+__awstoken_valid_next_sep="$(_screen_encode_color ${__dark_green} ${__awsh_region_bg})"
+
+__awstoken_expired_segment="$(_screen_encode_color ${__red} ${__awsh_brand_fg})"
+__awstoken_expired_next_sep="$(_screen_encode_color ${__red} ${__awsh_region_bg})"
+
+__awstoken_lowtime_segment="$(_screen_encode_color ${__dark_orange} ${__awsh_brand_fg})"
+__awstoken_lowtime_next_sep="$(_screen_encode_color ${__dark_orange} ${__awsh_region_bg})"
+
+
+__char_token_prefix="$(perl -C -e 'print chr 0x1FB68')"
+__char_token_suffix="$(perl -C -e 'print chr 0x1FB6A')"
+
+#  
+
+
+function _encode_expiry_duration() {
+
+    if [[ ! -z ${AWS_SESSION_EXPIRATION} ]]; then
+
+        local AWS_TOKEN_EXPIRY_DATETIME="$(echo "${AWS_SESSION_EXPIRATION}" | awk '{print $1}')"
+        local AWS_TOKEN_EXPIRY_EPOCH=$(date +"%s" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
+        local AWS_TOKEN_EXPIRY_TIME=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
+        # Now set the token expiry time so that it can be used for the PS1 prompt
+        # echo "AWS_TOKEN_EXPIRES...... $AWS_TOKEN_EXPIRY_TIME"
+
+        local dt_now="$(date)"
+        local dt_expiry="$(date --date "${AWS_SESSION_EXPIRATION}")"
+        local delta=$(( $(date -d "$dt_expiry" +%s) - $(date -d "$dt_now" +%s) ))
+        local time_remaining="$(date -d @$(( $(date -d "$dt_expiry" +%s) - $(date -d "$dt_now" +%s) )) -u +'%H:%M:%S')"
+        if [[ ${delta} -gt 300 ]]; then
+            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_prefix}$(_screen_encode_color ${__dark_green} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_suffix}${__reset}"
+        elif [[ ${delta} -gt 0 ]]; then
+            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_prefix}$(_screen_encode_color ${__dark_orange} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_suffix}${__reset}"
+        else
+            time_remaining="EXPIRED"
+            segment="$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_prefix}$(_screen_encode_color ${__red} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_suffix}${__reset}"
+        fi
+        if [[ ! -z $segment ]]; then
+            echo "${segment}"
+            #echo "[${segment}](bg:#AF00FF fg:#AF87FF)"
+            #echo "$(_screen_encode_color ${__dark_orange} ${__awsh_brand_fg})TEST${__reset}"
+        fi
+
+    fi
+
+}
+
+
+if [[ ! -z $1 ]]; then
+    _encode_expiry_duration "$1"
+fi
+
+exit 0
