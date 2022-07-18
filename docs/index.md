@@ -66,7 +66,7 @@ If you don't yet have Docker installed or access to Docker then you can follow t
 
 Some of the awsome things in here in addition to our own tools are;
 
-- The **AWS CLI** [ ](https://aws.amazon.com/cli/)
+- The **AWS CLI** [https://aws.amazon.com/cli](https://aws.amazon.com/cli/)
 - **SAWS**: A supercharged AWS command line interface [https://github.com/donnemartin/saws](https://github.com/donnemartin/saws)
 - **JQ**: Command-line JSON processor [http://stedolan.github.io/jq/](http://stedolan.github.io/jq/)
 - **Python** (Python 2. Boo. Yes Python3 coming soon.)
