@@ -6,7 +6,7 @@
 
 ## What is AWSH?
 
-![showcase](docs/media/images/awsh-terminal-on-windows-wsl.png)
+![showcase](docs/media/images/awsh-terminal-on-mac.png)
 
 - Lightweight containerized Shell with AWS tools inside
 - Aimed at providing a shell equivalent for AWS Console
