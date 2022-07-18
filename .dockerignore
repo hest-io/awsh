@@ -6,9 +6,12 @@ log/
 .docker/
 Vagrantfile
 doc/
+docs/
 .gitignore
 .vagrant/
 test/
 mkdocs.yml
 README.md
 scratch
+CHANGELOG.md
+CONTRIBUTORS.md
