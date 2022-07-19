@@ -69,8 +69,7 @@ Some of the awsome things in here in addition to our own tools are;
 - The **AWS CLI** [https://aws.amazon.com/cli](https://aws.amazon.com/cli/)
 - **SAWS**: A supercharged AWS command line interface [https://github.com/donnemartin/saws](https://github.com/donnemartin/saws)
 - **JQ**: Command-line JSON processor [http://stedolan.github.io/jq/](http://stedolan.github.io/jq/)
-- **Python** (Python 2. Boo. Yes Python3 coming soon.)
-
+- **Python 3**: [https://www.python.org/] (https://www.python.org/)
 
 !!! note "Coming Soon"
     The following are also in the works;
