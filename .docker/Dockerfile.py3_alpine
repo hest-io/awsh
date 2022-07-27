@@ -58,7 +58,7 @@ ENV AWSH_VERSION "${AWSH_BUILD_VERSION}"
 
 RUN \
     # Add our dummy user and group
-    adduser -D -u ${PUID} ${AWSH_USER} && \
+    adduser -D -u ${PUID} -s /bin/bash ${AWSH_USER} && \
     # AWSH and AWS CLI paths
     mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws ${AWSH_ROOT}/tmp/install
 
@@ -96,7 +96,7 @@ RUN \
     } | tee -a /etc/fixuid/config.yml && \
     # cleanup after installations
     rm -rf ${AWSH_ROOT}/tmp/install /var/cache/apk/*
-    
+
 RUN \
     ## Handling permissions and ownerships ##
     # Set the diff-so-fancy, fixuid, startship owner/group

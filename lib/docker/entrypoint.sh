@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # UID/GID (may) map to unknown user/group, $HOME=/ (the default when no home directory is defined)
 eval $( fixuid -q )
