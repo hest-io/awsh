@@ -55,16 +55,18 @@ ENV AWSH_VERSION "${AWSH_BUILD_VERSION}"
 # Main Docker image assembly for base layer
 ###############################################################################
 
-# Add our dummy user and group
-RUN adduser -D -u ${PUID} ${AWSH_USER}
 
-# AWSH and AWS CLI paths
-RUN mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws ${AWSH_ROOT}/tmp/install
+RUN \
+    # Add our dummy user and group
+    adduser -D -u ${PUID} -s /bin/bash ${AWSH_USER} && \
+    # AWSH and AWS CLI paths
+    mkdir -p ${AWSH_USER_HOME}/.awsh/log ${AWSH_ROOT}/tmp ${AWSH_USER_HOME}/.aws ${AWSH_ROOT}/tmp/install
 
 # Copy in Py requirement files
 COPY requirements/ ${AWSH_ROOT}/tmp/install
 
 RUN \
+    ## Downloading/Installing tools ##
     # update packages
     apk update && apk upgrade && \
     # install build support. needed for Kerberos installation
@@ -73,45 +75,37 @@ RUN \
     apk --no-cache add $(cat ${AWSH_ROOT}/tmp/install/${AWSH_OS_RUNTIME_DEPS} | egrep -v "^\s*(#|$)") && \
     # install AWSH Python dependencies
     python3 -m ensurepip --default-pip && \
-    ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} wheel setuptools && \
-    ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} -r "${AWSH_ROOT}/tmp/install/${AWSH_PYTHON_RUNTIME_DEPS}" && \
-    # Add monkeypatch for https://github.com/boto/boto/pull/3699. #NCFOR
-    ${CMD_PIP} install --upgrade git+https://github.com/wtsi-hgi/boto@fix/3561-py3-proxy-ssl-connection  && \
-    # Add beta support for the wonder AWS Google Auth tool with support for AWSH
-    ${CMD_PIP} install --upgrade git+https://github.com/hest-io/aws-google-auth.git@hestio-awsh  && \
+    ${CMD_PIP} install ${AWSH_PIP_INSTALL_ARGS} -r "${AWSH_ROOT}/tmp/install/${AWSH_PYTHON_RUNTIME_DEPS}" wheel setuptools && \
+    # Add monkeypatch for https://github.com/boto/boto/pull/3699. #NCFOR # Add beta support for the wonder AWS Google Auth tool with support for AWSH
+    ${CMD_PIP} install --upgrade git+https://github.com/wtsi-hgi/boto@fix/3561-py3-proxy-ssl-connection git+https://github.com/hest-io/aws-google-auth.git@hestio-awsh && \
     # remove the build tools
     apk del build-dependencies && \
     # Add Terraforming Ruby tool
-    gem install webrick --version ${SW_VER_WEBRICK} ${AWSH_GEM_INSTALL_ARGS} && \
-    gem install terraforming --version ${SW_VER_TERRAFORMING} ${AWSH_GEM_INSTALL_ARGS} && \
+    gem install webrick:${SW_VER_WEBRICK} terraforming:${SW_VER_TERRAFORMING} ${AWSH_GEM_INSTALL_ARGS} && \
+    # Download and extract diff-so-fancy, fixuid, startship
+    curl -SsL -Z "https://raw.githubusercontent.com/so-fancy/diff-so-fancy/master/third_party/build_fatpack/diff-so-fancy" -o /usr/local/bin/diff-so-fancy \
+    "https://github.com/boxboat/fixuid/releases/download/v${SW_VER_FIXUID}/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz" -o /${AWSH_ROOT}/tmp/install/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz \
+    "https://github.com/starship/starship/releases/download/v${SW_VER_STARSHIP}/starship-x86_64-unknown-linux-musl.tar.gz" -o /${AWSH_ROOT}/tmp/install/starship-x86_64-unknown-linux-musl.tar.gz && \
+    for gz in /${AWSH_ROOT}/tmp/install/*.gz; do tar -xvf $gz -C /usr/local/bin/ ; done && \
+    # Install fixuid
+    mkdir -p /etc/fixuid && \
+    # Build the config for fixuid
+    { \
+    echo 'user: awsh' ; \
+    echo 'group: awsh' ; \
+    } | tee -a /etc/fixuid/config.yml && \
     # cleanup after installations
-    rm -rf ${AWSH_ROOT}/tmp/install && \
-    rm -rf /var/cache/apk/*
+    rm -rf ${AWSH_ROOT}/tmp/install /var/cache/apk/*
 
-# Install diff-so-fancy (https://github.com/so-fancy/diff-so-fancy)
 RUN \
-    curl -SsL "https://raw.githubusercontent.com/so-fancy/diff-so-fancy/master/third_party/build_fatpack/diff-so-fancy" -o /usr/local/bin/diff-so-fancy && \
-    chown root:root /usr/local/bin/diff-so-fancy && \
-    chmod 0755 /usr/local/bin/diff-so-fancy
-
-# Install fixuid
-RUN \
-    curl -SsL "https://github.com/boxboat/fixuid/releases/download/v${SW_VER_FIXUID}/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz" | tar -C /usr/local/bin -xzf - && \
-    chown root:root /usr/local/bin/fixuid && \
+    ## Handling permissions and ownerships ##
+    # Set the diff-so-fancy, fixuid, startship owner/group
+    chown root:root /usr/local/bin/diff-so-fancy /usr/local/bin/fixuid /usr/local/bin/starship && \
+    # Set the diff-so-fancy, fixuid, startship permissions
+    chmod 0755 /usr/local/bin/diff-so-fancy usr/local/bin/starship && \
     chmod 4755 /usr/local/bin/fixuid && \
-    mkdir -p /etc/fixuid
-
-# Install starship
-RUN \
-    curl -SsL "https://github.com/starship/starship/releases/download/v${SW_VER_STARSHIP}/starship-x86_64-unknown-linux-musl.tar.gz" | tar -C /usr/local/bin -xzf - && \
-    chown root:root /usr/local/bin/starship && \
-    chmod 0755 /usr/local/bin/starship
-
-# Build the config for fixuid
-COPY /lib/docker/fixuid.yml /etc/fixuid/config.yml
-
-# Add sudo permissions to allow users to make changes if needed inside the container
-RUN echo 'awsh ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+    # Add sudo permissions to allow users to make changes if needed inside the container
+    echo 'awsh ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 ###############################################################################
 # Main Docker image assembly for AWSH
@@ -121,30 +115,16 @@ FROM base as awsh
 # Add our code
 COPY / ${AWSH_ROOT}
 
-# Link the JQ module library
-RUN ln -s ${AWSH_ROOT}/lib/jq ${AWSH_USER_HOME}/.jq
-
-# Ensure the AWSH lib is being loaded into the shell
-RUN { \
-    echo '. /opt/awsh/etc/awshrc' ; \
-    echo '[ -f ${HOME}/.bashrc_local ] && . ${HOME}/.bashrc_local' ; \
-    } | tee -a ${AWSH_USER_HOME}/.bashrc
-
-# Build default AWS CLI config so that it doesn't have a brain fart when
-# run due to not setting it's own sensible defaults
-RUN { \
-    echo '[default]' ; \
-    echo 'output = json' ; \
-    } | tee ${AWSH_USER_HOME}/.aws/config
-
-RUN { \
-    echo '[default]' ; \
-    echo 'aws_access_key_id = 1' ; \
-    echo 'aws_secret_access_key = 1' ; \
-    } | tee ${AWSH_USER_HOME}/.aws/credentials
-
-# Ensure ownership of AWSH paths
 RUN \
+    # Link the JQ module library
+    ln -s ${AWSH_ROOT}/lib/jq ${AWSH_USER_HOME}/.jq && \
+    # Build default AWS CLI config so that it doesn't have a brain fart when
+    # run due to not setting it's own sensible defaults
+    cat ${AWSH_ROOT}/lib/awscli/config >> ${AWSH_USER_HOME}/.aws/config && \
+    cat ${AWSH_ROOT}/lib/awscli/config >> ${AWSH_USER_HOME}/.aws/credentials && \
+    # Ensure the AWSH lib is being loaded into the shell
+    cat ${AWSH_ROOT}/lib/awsh/.bashrc >> ${AWSH_USER_HOME}/.bashrc && \
+    # Ensure ownership of AWSH paths
     chown -c -R ${AWSH_USER}:${AWSH_GROUP} ${AWSH_ROOT} && \
     chown -c -R ${AWSH_USER}:${AWSH_GROUP} ${AWSH_USER_HOME}
 

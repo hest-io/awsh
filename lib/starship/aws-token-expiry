@@ -97,12 +97,10 @@ __awstoken_expired_next_sep="$(_screen_encode_color ${__red} ${__awsh_region_bg}
 __awstoken_lowtime_segment="$(_screen_encode_color ${__dark_orange} ${__awsh_brand_fg})"
 __awstoken_lowtime_next_sep="$(_screen_encode_color ${__dark_orange} ${__awsh_region_bg})"
 
+__char_token_prefix="$(perl -C -e 'print chr 0x2771')"
+__char_token_suffix="$(perl -C -e 'print chr 0x2770')"
 
-__char_token_prefix="$(perl -C -e 'print chr 0x1FB68')"
-__char_token_suffix="$(perl -C -e 'print chr 0x1FB6A')"
-
-#  
-
+#    Time: ⏱ ⌛ ⏰ ⌚ ⏲ 🕧 - Unicode Character Table. › ❱
 
 function _encode_expiry_duration() {
 
@@ -119,12 +117,12 @@ function _encode_expiry_duration() {
         local delta=$(( $(date -d "$dt_expiry" +%s) - $(date -d "$dt_now" +%s) ))
         local time_remaining="$(date -d @$(( $(date -d "$dt_expiry" +%s) - $(date -d "$dt_now" +%s) )) -u +'%H:%M:%S')"
         if [[ ${delta} -gt 300 ]]; then
-            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_prefix}$(_screen_encode_color ${__dark_green} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_suffix}${__reset}"
+            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_prefix}$(_screen_encode_color ${__dark_green} ${__awsh_brand_fg})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_green})${__char_token_suffix}${__reset}"
         elif [[ ${delta} -gt 0 ]]; then
-            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_prefix}$(_screen_encode_color ${__dark_orange} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_suffix}${__reset}"
+            segment="$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_prefix}$(_screen_encode_color ${__dark_orange} ${__awsh_brand_fg})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__dark_orange})${__char_token_suffix}${__reset}"
         else
             time_remaining="EXPIRED"
-            segment="$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_prefix}$(_screen_encode_color ${__red} ${__white})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_suffix}${__reset}"
+            segment="$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_prefix}$(_screen_encode_color ${__red} ${__awsh_brand_fg})${time_remaining}$(_screen_encode_color ${__bg_transparent} ${__red})${__char_token_suffix}${__reset}"
         fi
         if [[ ! -z $segment ]]; then
             echo "${segment}"

@@ -49,7 +49,7 @@ If you already have Docker installed you are ready to go!
 docker run -it --rm hestio/awsh
 ```
 
-![AWSH Terminal on Windows](media/images/awsh-terminal-on-windows-wsl.png)
+![AWSH Terminal on Windows](media/images/awsh-terminal-on-mac.png)
 
 
 Once you've got your shell working you can hop over to the **[User Guide](/user-guide/auth-setup/)** to begin using some of the helpful tools inside as well as setup AWSH to use your local or corporate credentials to access AWS
@@ -66,15 +66,13 @@ If you don't yet have Docker installed or access to Docker then you can follow t
 
 Some of the awsome things in here in addition to our own tools are;
 
-- The **AWS CLI** [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
+- The **AWS CLI** [https://aws.amazon.com/cli](https://aws.amazon.com/cli/)
 - **SAWS**: A supercharged AWS command line interface [https://github.com/donnemartin/saws](https://github.com/donnemartin/saws)
 - **JQ**: Command-line JSON processor [http://stedolan.github.io/jq/](http://stedolan.github.io/jq/)
-- **Python** (Python 2. Boo. Yes Python3 coming soon.)
-
+- **Python 3**: [https://www.python.org/] (https://www.python.org/)
 
 !!! note "Coming Soon"
     The following are also in the works;
 
-    - Replace Python2 with Python3
     - AWS Systems Manager Session Manager: [https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html})
     - AWS SAM CLI: CLI tool to build, test, debug, and deploy Serverless applications using AWS SAM [https://aws.amazon.com/serverless/sam/](https://aws.amazon.com/serverless/sam/)
