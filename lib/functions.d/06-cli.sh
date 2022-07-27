@@ -152,8 +152,6 @@ function _cli_startup {
         echo "  'awsh session-save'       Save an active AWS session"
         echo "  'awsh session-load'       Resume a previous saved AWS session"
         echo "  'awsh help'               Show help and usage"
-        echo "  'awsh prompt'             Enable the AWSH custom PS1 prompt"
-        echo "  'awsh oldprompt'          Restore the previous PS1 prompt"
         echo ""
         echo "If you do not wish to see these tips then 'touch ~/.awsh/config.d/.notips'"
         echo ""
