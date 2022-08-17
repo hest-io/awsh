@@ -1,5 +1,6 @@
 # Runtime dependencies
 bash
+git-bash-completion
 ca-certificates
 coreutils
 curl
