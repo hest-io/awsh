@@ -449,9 +449,17 @@ function _aws_save_account_metadata {
     if _aws_is_authenticated ; then
 
         AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
+        CHECK_AWS_ACCOUNT_ALIAS_CONTENT="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
+        if [ $CHECK_AWS_ACCOUNT_ALIAS_CONTENT != null ]; then
+            AWS_ACCOUNT_ALIAS=${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}
+            _screen_note "AWS_ACCOUNT_ALIAS...... ${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}"
+        else
+            AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_NUMBER}
+            _screen_note "AWS_ACCOUNT_ALIAS...... null"
+            _screen_note "AWS_ACCOUNT_ALIAS...... Redefined to have same value as: AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}"
+        fi
         # Create the metadata file if we don't already have one
         if [[ ! -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" ]]; then
-            AWS_ACCOUNT_ALIAS="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
 
             cat > "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" <<-EOF
 AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
