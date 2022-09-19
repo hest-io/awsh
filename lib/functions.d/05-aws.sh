@@ -58,9 +58,12 @@ function _aws_load_sso_credentials {
         AWS_ID_PATH="${AWS_ID_NAME}/$(basename "$(aws sts get-caller-identity | jq -r '.Arn')")"
         AWS_ID_NAME="${AWS_ID_PATH}"
 
+        # Set the session expiry if currently unset, based on the info we do have
+        : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+
         export AWS_SSH_KEY AWS_ID_NAME
         export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-        export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
+        export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_EXPIRATION
 
         # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
         # variables that are detected and used
@@ -105,6 +108,9 @@ function _aws_load_credentials_from_json {
     let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_EXPIRY}")
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date ${AWS_EXPIRY})
     _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
+
+    # Set the session expiry if currently unset, based on the info we do have
+    : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
 
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
     export AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
@@ -179,8 +185,11 @@ function _aws_load_mfaauth_credentials {
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
     _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
+    # Set the session expiry if currently unset, based on the info we do have
+    : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_MFA_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
+    export AWS_MFA_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN AWS_SESSION_EXPIRATION
 
 }
 
@@ -232,8 +241,11 @@ function _aws_load_krb5formauth_credentials {
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
     _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
+    # Set the session expiry if currently unset, based on the info we do have
+    : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY
+    export AWS_SECURITY_TOKEN AWS_SESSION_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_EXPIRATION
 
 }
 
@@ -284,8 +296,11 @@ function _aws_load_googleauth_credentials {
     local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "${AWS_TOKEN_EXPIRY_DATETIME}")
     _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
 
+    # Set the session expiry if currently unset, based on the info we do have
+    : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+
     export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_USER_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
+    export AWS_USER_ID AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN AWS_SESSION_EXPIRATION
 
 }
 
@@ -449,9 +464,17 @@ function _aws_save_account_metadata {
     if _aws_is_authenticated ; then
 
         AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
+        CHECK_AWS_ACCOUNT_ALIAS_CONTENT="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
+        if [ $CHECK_AWS_ACCOUNT_ALIAS_CONTENT != null ]; then
+            AWS_ACCOUNT_ALIAS=${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}
+            _screen_note "AWS_ACCOUNT_ALIAS...... ${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}"
+        else
+            AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_NUMBER}
+            _screen_note "AWS_ACCOUNT_ALIAS...... null"
+            _screen_note "AWS_ACCOUNT_ALIAS...... Redefined to have same value as: AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}"
+        fi
         # Create the metadata file if we don't already have one
         if [[ ! -f "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" ]]; then
-            AWS_ACCOUNT_ALIAS="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
 
             cat > "${HOME}/.awsh/config.d/${AWS_ACCOUNT_NUMBER}.awsh" <<-EOF
 AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}
