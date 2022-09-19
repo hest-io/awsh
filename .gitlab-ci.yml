@@ -16,9 +16,6 @@ variables:
 services:
   - docker:dind
 
-before_script:
-  - echo -n $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
-
 
 ###############################################################################
 # Task Templates
@@ -46,6 +43,7 @@ before_script:
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
   stage: build
   script:
+    - echo -n $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
     - echo "Building using ${CI_PROJECT_DIR}/${DOCKER_FILE}"
     - >
       docker build
@@ -63,6 +61,7 @@ before_script:
     IMAGE_TAG: "${CI_COMMIT_REF_NAME}"
   stage: push
   script:
+    - echo -n $CI_JOB_TOKEN | docker login -u gitlab-ci-token --password-stdin $CI_REGISTRY
     # Because we have no guarantee that this job will be picked up by the same runner
     # that built the image in the previous step, we pull it again locally
     - docker pull ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
