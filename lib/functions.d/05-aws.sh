@@ -29,6 +29,7 @@ function _aws_is_authenticated {
 # Helper function to load simple API keys from the environment
 function _aws_load_sso_credentials {
 
+    _aws_logout
     AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
 
     _screen_print_header_l2 "Paste SSO credentials below and then use CTRL+D"
