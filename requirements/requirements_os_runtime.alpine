@@ -4,6 +4,7 @@ git-bash-completion
 ca-certificates
 coreutils
 curl
+gcompat
 gettext
 git
 git-diff-highlight
