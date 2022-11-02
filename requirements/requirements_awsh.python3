@@ -26,6 +26,7 @@ requests==2.10.0
 s3transfer==0.3.4
 tabulate==0.8.9
 urllib3==1.26.3
+git-remote-codecommit==1.16
 
 # These are packages that are not explicitly required for AWSH but are likely to be useful
 # if you're interacting with AWS at the CLI on a regular basis
