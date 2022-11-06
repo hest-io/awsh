@@ -48,6 +48,7 @@ services:
     - >
       docker build
       --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+      --build-arg "AWSH_BUILD_VERSION=${CI_COMMIT_REF_NAME}"
       --file "${CI_PROJECT_DIR}/${DOCKER_FILE}" .
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
 
