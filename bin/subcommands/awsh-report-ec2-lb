@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+Simple utility to report AWS Load Balancers TG Attachments(ALB)/Instances(CLB) status
+
+Usage:
+        awsh-report-ec2-lb ( -a | -c ) [options]
+        awsh-report-ec2-lb ( -h  |  --help )
+
+Options:
+        -a, --application           List AWS Application Load Balancers
+        -c, --classic               List AWS Classic Load Balancers
+        -f, --format=<format>       Table format: plain, simple, github, grid,
+                                    fancy_grid, pipe, orgtbl, jira, presto, pretty,
+                                    psql, rst, mediawiki, moinmoin, youtrack, html,
+                                    unsafehtml, latex, latex_raw, latex_booktabs,
+                                    latex_longtable, textfile, tsv [default: simple]
+        -h, --help                  Show this help message and exit
+        --debug                     Show more verbose logging
+"""
+
+# Library to perform AWS API Calls
+import boto3
+# Library to count number of healthy, unhealthy, unused target groups
+from collections import Counter
+# Library to parse LB's script output
+import pandas as pd
+# Library to parse LB's output as tabulate table
+from tabulate import tabulate
+# Library to provide logging content from functions
+import logging
+# Advanced configuration for Botocore clients. Library to set number of API Calls per second to avoid throttling
+from botocore.config import Config
+# Library to iterate over two lists of objects (tg, rules)
+import itertools
+# Library to benefit from AWSH logging tools
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+# Library to provide command line options (e.g. -c classic, -a application, -h help)
+import docopt
+# Library to read key, value from the options provided in the command line
+from future.utils import iteritems
+# This Library provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter.
+import sys
+
+# Set the ALB function to perform max retries to avoid throttling
+BOTO_CONFIG = Config(
+    retries = {
+        'max_attempts': 10,
+        'mode': 'standard'
+    }
+)
+
+check_imports()
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+##############################################################################
+# Functions
+##############################################################################
+
+# Function to get LB tags key/value
+def aws_tags_2_dict(tags):
+    return { t['Key']: t['Value'] for t in tags }
+
+
+# Get classic LB's report
+def classic_lbs():
+    client = boto3.client('elb')
+    response = client.describe_load_balancers()
+
+    classic_data = []
+
+    for lb in response['LoadBalancerDescriptions']:
+        lb_metadata = {
+            'LoadBalancerName': lb['LoadBalancerName'],
+            'DNSName':          lb['DNSName'],
+            'VPCId':            lb['VPCId'],
+            'CreatedTime':      lb['CreatedTime'],
+            'SecurityGroups':   ", ".join(lb['SecurityGroups']),
+            'Subnets':          ", ".join(lb['Subnets']),
+            'CreatedTime':      lb['CreatedTime'],
+            'Instances':        ", ".join([x['InstanceId'] for x in lb['Instances']])
+        }
+        tag_metadata = aws_tags_2_dict(client.describe_tags(LoadBalancerNames=[ lb['LoadBalancerName'] ])['TagDescriptions'][0]['Tags'])
+        lb_metadata.update(tag_metadata)
+        classic_data.append(lb_metadata)
+    return classic_data
+
+
+# Get Application LB's report
+def application_lbs():
+    client = boto3.client('elbv2', config=BOTO_CONFIG)
+    response = client.describe_load_balancers()
+
+    alb_data = []
+    lb_arns = [ x['LoadBalancerArn'] for x in response['LoadBalancers'] ]
+
+# Append ALB's info
+    for listeners in lb_arns:
+        lb_listeners_arn = client.describe_listeners(LoadBalancerArn=listeners,)
+        lb_listeners = [x['ListenerArn'] for x in lb_listeners_arn['Listeners']]
+        metadata = aws_tags_2_dict(client.describe_tags(ResourceArns=[listeners])['TagDescriptions'][0]['Tags'])
+        listeners = listeners.split('/', 1)[1].rsplit('/', 1)[0]
+
+        for listeners_arn in lb_listeners:
+            lb_rules = client.describe_rules(ListenerArn=listeners_arn)
+            lb_rules_arn = [x['RuleArn'] for x in lb_rules['Rules'] if x['Actions'][0]['Type'] == 'forward']
+            tg_arn_list = [r['Actions'][0]['TargetGroupArn'] for r in lb_rules['Rules'] if r['Actions'][0]['Type'] == 'forward']
+            listeners_arn = listeners_arn.rsplit('/', 1)[1]
+
+            for tg,rule in itertools.zip_longest(tg_arn_list,lb_rules_arn):
+                tg_health = Counter([t['TargetHealth']['State'] for t in client.describe_target_health(TargetGroupArn=tg)['TargetHealthDescriptions']])
+                tg_health_summary = ','.join([ f'{k}: {v}' for k,v in tg_health.items() ])
+                tg = tg.split('/', 1)[1].rsplit('/', 1)[0]
+                rule = rule.rsplit('/', 1)[1]
+                data = {"Load Balancer": listeners, "Listener": listeners_arn, "Rule": rule, "TG": tg, "TG Status": tg_health_summary }
+                data.update(metadata)
+                alb_data.append(data)
+
+    return alb_data
+
+
+
+# Main function to parse/tabulate the information generated from application and classic functions
+def main(options):
+    if options ["--debug"] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    try:
+        if options["--application"] is True:
+            df = pd.DataFrame.from_dict(application_lbs()).fillna('')
+
+        if options["--classic"] is True:
+            df = pd.DataFrame.from_dict(classic_lbs()).fillna('')
+
+        if df is not None:
+            print(
+                tabulate(
+                    df,
+                    headers= list(df.columns),
+                    tablefmt=options["--format"],
+                )
+            )
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    except docopt.DocoptExit:
+        sys.exit(__doc__)
