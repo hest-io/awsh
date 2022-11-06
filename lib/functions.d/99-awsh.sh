@@ -48,13 +48,9 @@ EOF
 
 
 function _awsh_version {
-    local AWSH_VERSION
-    if [[ "${AWSH_CONTAINER}" == "docker" ]]; then
-        echo "${CONST_SCRIPT_NAME} version ${AWSH_VERSION_DOCKER}"
-    else
-        AWSH_VERSION="$(cd ${AWSH_ROOT}; git describe --always)"
-        echo "awsh version $AWSH_VERSION"
-    fi
+    # Default for AWSH_VERSION if unset
+    : "${AWSH_ROOT:='unknown'}"
+    echo "awsh version $AWSH_VERSION"
 }
 
 

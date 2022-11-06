@@ -2,6 +2,8 @@
 
 > Below are significant or impactful changes present in the listed version(s)
 
+## v2.3
+- Additional report for AWS Load Balancers
 
 ## v2.2
 

@@ -7,7 +7,11 @@ Usage:
     awsh-cloudwatch-s3-info ( -h | --help )
 
 Options:
-    -f, --format=<format>   Table format: plain, simple, github, grid, fancy_grid, pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki, moinmoin, youtrack, html, unsafehtml, latex, latex_raw, latex_booktabs, latex_longtable, textile, tsv [default: simple]
+    -f, --format=<format>   Table format: plain, simple, github, grid, fancy_grid,
+                            pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki,
+                            moinmoin, youtrack, html, unsafehtml, latex, latex_raw,
+                            latex_booktabs, latex_longtable, textile,
+                            tsv [default: simple]
     -h, --help              Show this help message and exit
     --insecure              Don't validate SSL cert
     --debug                 Show more verbose logging
@@ -39,7 +43,30 @@ check_imports()
 
 # Template
 query_template = Template(
-    '{"Id": "$id", "MetricStat": { "Metric": { "Namespace": "AWS/S3", "MetricName": "$metricName", "Dimensions": [ {"Name": "BucketName", "Value": "$bucketName"}, {"Name": "StorageType", "Value": "$storageType"}]}, "Period": 86400, "Stat": "Average"}, "ReturnData": true}'
+    """
+    {
+        "Id": "$id",
+        "MetricStat": {
+            "Metric": {
+                "Namespace": "AWS/S3",
+                "MetricName": "$metricName",
+                "Dimensions": [
+                    {
+                        "Name": "BucketName",
+                        "Value": "$bucketName"
+                    },
+                    {
+                        "Name": "StorageType",
+                        "Value": "$storageType"
+                    }
+                ]
+            },
+            "Period": 86400,
+            "Stat": "Average"
+        },
+        "ReturnData": true
+    }
+    """
 )
 
 # Data for template
@@ -98,12 +125,15 @@ def sizeof_fmt(num, suffix="B"):
 
 
 # Get bucket location
-def bucket_location(bucket, ssl_verification):
-    s3 = boto3.client("s3", verify=ssl_verification)
-    response = s3.get_bucket_location(Bucket=bucket)
-    if response["LocationConstraint"] is None:
+def bucket_location(bucket, ssl_verification=True, valid_region_ids=[]):
+    _log.debug(f'Trying to determine location for bucker: {bucket}')
+    s3_client = boto3.client("s3", verify=ssl_verification)
+    response = s3_client.get_bucket_location(Bucket=bucket)
+    location = response["LocationConstraint"]
+    if location not in valid_region_ids:
+        _log.warn(f"S3 Bucket {bucket} did not return a valid AWS Region ID for it's location ({location}), defaulting to us-east-1")
         return "us-east-1"
-    return response["LocationConstraint"]
+    return location
 
 
 # Query CloudWatch for bucket information
@@ -114,10 +144,16 @@ def get_buckets_info(ssl_verification):
     bucket_data = {}
     buckets_data = {}
     query = ""
+
+    ec2_client = boto3.client("ec2", verify=ssl_verification)
+    response = ec2_client.describe_regions()
+    valid_region_ids = [ x['RegionName'] for x in response['Regions']]
+    _log.debug(f'Valid regions for this account are: {valid_region_ids}')
+
     for bucket in buckets["Buckets"]:
         # Create CloudWatch boto client for bucket region
         cloudwatch = boto3.client(
-            "cloudwatch", region_name=bucket_location(bucket["Name"], ssl_verification)
+            "cloudwatch", region_name=bucket_location(bucket["Name"], valid_region_ids=valid_region_ids, ssl_verification=True)
         )
         # Preapare query
         query = [
@@ -142,6 +178,7 @@ def get_buckets_info(ssl_verification):
             LabelOptions={"Timezone": "+0000"},
         ):
             bucket_data[bucket["Name"]] = response
+
     for bucket in bucket_data:
         buckets_data[bucket] = {"Objects": 0, "SizeB": 0.0, "Size": 0, "SizeGB": 0}
         for metric in bucket_data[bucket]["MetricDataResults"]:
@@ -162,11 +199,14 @@ def get_buckets_info(ssl_verification):
     return buckets_data
 
 
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
 # main program function
 def main(options):
     if options["--debug"] is True:
         import logging
-
         _log.setLevel(logging.DEBUG)
 
     if options["--insecure"] is True:
@@ -179,11 +219,14 @@ def main(options):
         ssl_verification = not options["--insecure"]
 
         df = pd.DataFrame(get_buckets_info(ssl_verification))
+        # Perform some normalization so that scientific numbering (exponents) don't make
+        # the output difficult to read
         print(
             tabulate(
                 df.T,
                 headers=["Name", "Objects", "Size", "SizeGB"],
                 tablefmt=options["--format"],
+                floatfmt=".2f"
             )
         )
 
@@ -192,6 +235,7 @@ def main(options):
         clean_up(-1)
 
     clean_up()
+
 
 
 if __name__ == "__main__":
