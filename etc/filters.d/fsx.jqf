@@ -1,0 +1,10 @@
+#cmd: fsx describe-file-systems
+#sort: OwnerId,VpcId,Lifecycle
+
+.FileSystems[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)
