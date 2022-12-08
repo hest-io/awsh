@@ -4,9 +4,9 @@ ${awsh_report_title}
 ================================================================================
 
 AWS Account              : ${aws_account_id}
+AWS Account Alias        : ${AWS_ACCOUNT_ALIAS}
 Created from AWS Region  : ${AWS_DEFAULT_REGION}
-Created By               : ${aws_user}
+Created By               : ${aws_user_id}
 Created Date             : $(date)
-
 
 SIMPLETEMPLATE

@@ -2,6 +2,10 @@
 
 > Below are significant or impactful changes present in the listed version(s)
 
+## v2.4
+- Added new diagram tool
+- Additional report/filters for AWS IAM Groups
+
 ## v2.3
 - Additional report for AWS Load Balancers
 

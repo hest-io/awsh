@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Simple Inventory report
+# Simple access report
 #
 
 ##############################################################################
@@ -154,25 +154,36 @@ _assert_is_authenticated
 content_buffer="$(mktemp)"
 resource_filter="$(mktemp)"
 # These variables will be visible to the header and footer page templates
+
 active_identity="$(aws sts get-caller-identity)"
 aws_account_id="$(echo "${active_identity}" | jq -r '.Account')"
 aws_user_id="$(echo "${active_identity}" | jq -r '.UserId')"
 
-_log "$LINENO" "Creating Inventory reports in [${output_format}] format into ${output_dir}"
+_log "$LINENO" "Creating access report in [${output_format}] format into ${output_dir}"
 
 # Open a file for the report
-exec 4> "${output_dir}/aws-inventory-report-global.${output_format}"
+exec 4> "${output_dir}/aws-access-report-${aws_account_id}.${output_format}"
 
-awsh_report_title="AWS Inventory Report: Global Resources"
+awsh_report_title="AWS Access Report: Account ${aws_account_id}"
 fs_page_header >&4
 
-# Build global resources first
-_log "$LINENO" "Creating inventory of known global resources"
+# Build auth report first
+fs_heading 2 "AWS Credentials" >&4
+awsh auth-report -f ${output_format} > "${content_buffer}" 2> /dev/null
+if [ $? -eq 0 ]; then
+    cat "${content_buffer}" >&4
+else
+    echo "None found" >&4
+fi
 
-global_resources="$(grep -l '#geo: global' $AWSH_ROOT/etc/filters.d/*.jqf | xargs -i basename {} | sed -e 's/\.jqf$//g')"
+# Build global resources
+_log "$LINENO" "Creating access report of known account level resources"
+
+global_resources="$(grep -l '#geo: global' $AWSH_ROOT/etc/filters.d/iam-*.jqf | xargs -i basename {} | sed -e 's/\.jqf$//g')"
 echo "${global_resources}" > ${resource_filter}
 
 for resource in ${global_resources}; do
+    _log "$LINENO" "Processing ${resource}"
     fs_heading 2 "${resource}" >&4
     awsh list "${resource}" -f "${output_format}" > "${content_buffer}" 2> /dev/null
     if [ $? -eq 0 ]; then
@@ -185,42 +196,6 @@ done
 fs_page_footer >&4
 # Close the report
 exec 4>&-
-
-
-# Iterate through each of the AWS Regions for the remaining known resource types
-region_list="$(aws ec2 describe-regions --output=text | awk '{print $3}')"
-current_region=$AWS_DEFAULT_REGION
-
-for region in $region_list; do
-    AWS_DEFAULT_REGION=${region}
-    export AWS_DEFAULT_REGION
-
-    # Open a file for the report
-    exec 4> "${output_dir}/aws-inventory-report-${AWS_DEFAULT_REGION}.${output_format}"
-
-    awsh_report_title="AWS Inventory Report: Regional Resources in ${AWS_DEFAULT_REGION}"
-    fs_page_header >&4
-
-    _log "$LINENO" "Creating inventory of known regional resources for [${AWS_DEFAULT_REGION}] region"
-    for resource in $(awsh list -c | grep -v -f ${resource_filter}); do
-        fs_heading 2 "${resource}"  >&4
-        awsh list "${resource}" -f "${output_format}" > "${content_buffer}" 2> /dev/null
-        if [ $? -eq 0 ]; then
-            cat "${content_buffer}"  >&4
-        else
-            echo "None found"  >&4
-        fi
-    done
-
-    fs_page_footer >&4
-    # Close the report
-    exec 4>&-
-
-done
-
-# Restore default region
-AWS_DEFAULT_REGION=${current_region}
-export AWS_DEFAULT_REGION
 
 # Cleanup
 [ -f ${content_buffer} ] && rm -f ${content_buffer}
