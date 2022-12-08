@@ -1,0 +1,9 @@
+#cmd: iam list-groups
+#sort: GroupName,CreateDate
+#geo: global
+
+.Groups | .[] | {
+    GroupName,
+    CreateDate,
+    Arn
+}

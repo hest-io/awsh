@@ -1,0 +1,12 @@
+#cmd: iam list-policies --scope Local
+#sort: PolicyName,Description
+#geo: global
+
+.Policies | .[] | {
+    PolicyName,
+    Description,
+    PolicyId,
+    CreateDate,
+    UpdateDate,
+    Arn
+}
