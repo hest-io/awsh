@@ -1,0 +1,4 @@
+#cmd: iam get-account-summary
+#geo: global
+
+.SummaryMap | with_entries( select(.key|contains("Quota")|not))
