@@ -1,0 +1,11 @@
+#foreach: iam list-groups | jq -r '.Groups | .[]|.GroupName'
+#cmd: iam list-attached-group-policies --group-name ${item}
+#enrich: jq --arg item "${item}" '(.AttachedPolicies | .[] | .GroupName) = $item'
+#sort: GroupName,PolicyName
+#geo: global
+
+.[] | .AttachedPolicies | .[] | {
+    GroupName,
+    PolicyName,
+    PolicyArn
+}
