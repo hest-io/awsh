@@ -1,0 +1,186 @@
+#!/usr/bin/env python3
+"""
+Simple utility to import/reimport PFX certificates in AWS Certificate Manager
+
+Usage:
+    awsh-acm-import-certificate ( -i  | [ -r <cert-arn> ] ) [options]
+    awsh-acm-import-certificate ( -h  |  --help )
+
+Options:
+    -r <cert-arn>, --cert-arn=cert-arn       Optional. Reimports ACM Certificate
+    -i, --input <file>                       Full path to the PFX certificate file to imported into AWS Certificate Manager
+    -h, --help                               Show this help message and exit
+    --debug                                  Show more verbose logging
+"""
+
+# Library to perform AWS API calls
+import boto3
+# Library to ask certificate password
+from getpass import getpass
+# Library to load/serialize the certificate
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.serialization import pkcs12
+# Library to provide logging content from functions
+import logging
+# Library to benefit from AWSH logging tools
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+# Library to read key, value from the options provided in the command line
+from future.utils import iteritems
+# Library to provide command line options (e.g. -e encrypted, -u unencrypted, -h help)
+import docopt
+# This Library provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter.
+import sys
+# Library to check path of the
+import os
+
+# Create an ACM client
+acm = boto3.client('acm')
+
+check_imports()
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+##############################################################################
+# Functions
+##############################################################################
+
+# Encrypted PFX certificate function
+def import_pfx_certificate_to_acm():
+    try:
+
+# Ask PFX certificate password
+        cert_password = getpass(prompt='Please type the certificate password and press "Enter": \n').encode()
+
+# Get certificate file
+        cert_file = options["--input"]
+        if not os.path.exists(cert_file):
+            raise ValueError("The specified certificate file does not exist")
+        if cert_password:
+            with open(cert_file, "rb") as f: 
+                try:
+                    private_key, certificate, additional_certificates = pkcs12.load_key_and_certificates(f.read(), cert_password)
+                except ValueError as e:
+                    raise ValueError("The provided certificate password is incorrect")
+
+# Serialize the private key in the desired format (PEM)
+            private_key_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()).decode('utf-8')
+
+# Serialize the certificate in the desired format (PEM)
+            certificate_body_pem = certificate.public_bytes(
+                encoding=serialization.Encoding.PEM).decode('utf-8')
+
+# Serialize the certificate chain in the desired format (PEM)
+            certificate_chain_pem = b"\n".join([c.public_bytes(
+                encoding=serialization.Encoding.PEM)
+                for c in additional_certificates]).decode('utf-8')
+
+# Import the certificate
+            if options["--cert-arn"]:
+                try:
+                    response = acm.describe_certificate(CertificateArn=options["--cert-arn"])
+                    certificate_arn = response["Certificate"]["CertificateArn"]
+                except acm.exceptions.ResourceNotFoundException:
+                    raise ValueError("The provided AWS Certificate ARN certificate does not exist")
+                    sys.exit()
+                
+                response = acm.import_certificate(
+                    CertificateArn=options["--cert-arn"],
+                    Certificate=certificate_body_pem,
+                    PrivateKey=private_key_pem,
+                    CertificateChain=certificate_chain_pem
+                    )['CertificateArn']
+                _log.info("The AWS Certificate ARN {} has been successfully reimported".format(response))
+            
+            else:
+                response = acm.import_certificate(
+                    Certificate=certificate_body_pem,
+                    PrivateKey=private_key_pem,
+                    CertificateChain=certificate_chain_pem
+                    )['CertificateArn']
+                _log.info("The AWS Certificate ARN {} has been successfully imported".format(response))
+
+        else:
+            with open(cert_file, "rb") as f:
+                private_key, certificate, additional_certificates = pkcs12.load_key_and_certificates(f.read(), None)
+        
+# Serialize the private key in the desired format (PEM)
+            private_key_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()).decode('utf-8')
+
+# Serialize the certificate in the desired format (PEM)
+            certificate_body_pem = certificate.public_bytes(
+                encoding=serialization.Encoding.PEM).decode('utf-8')
+
+# Serialize the certificate chain in the desired format (PEM)
+            certificate_chain_pem = b"\n".join([c.public_bytes(
+                encoding=serialization.Encoding.PEM)
+                for c in additional_certificates]).decode('utf-8')
+
+# Import the certificate
+            if options["--cert-arn"]:
+                try:
+                    response = acm.describe_certificate(CertificateArn=options["--cert-arn"])
+                    certificate_arn = response["Certificate"]["CertificateArn"]
+                except ValueError as e:
+                    raise ValueError("The provided AWS Certificate ARN certificate does not exist")
+                    #sys.exit()
+
+                response = acm.import_certificate(
+                    CertificateArn=options["--cert-arn"],
+                    Certificate=certificate_body_pem,
+                    PrivateKey=private_key_pem,
+                    CertificateChain=certificate_chain_pem
+                    )['CertificateArn']
+                _log.info("The AWS Certificate ARN {} has been successfully reimported".format(response))
+        
+            else:
+                response = acm.import_certificate(
+                    Certificate=certificate_body_pem,
+                    PrivateKey=private_key_pem,
+                    CertificateChain=certificate_chain_pem
+                    )['CertificateArn']
+                _log.info("The AWS Certificate ARN {} has been successfully imported".format(response))
+    
+    except ValueError as e:
+        _log.error(e)
+
+# Main function to parse/tabulate the information generated from application and classic functions
+def main(options):
+    if options ["--debug"] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in iteritems(options):
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    try:
+        if options["--input"]:
+            import_pfx_certificate_to_acm()
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    except docopt.DocoptExit:
+        sys.exit(__doc__)
