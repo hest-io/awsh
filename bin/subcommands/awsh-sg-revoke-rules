@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""
+Simple utility to revoke all ingress/egress rules of one or more AWS Security Group ID's
+
+Usage:
+        awsh-sg-revoke-rules [-g <sg-id>, ..] [ -y ] [options]
+        awsh-sg-revoke-rules ( -h  |  --help )
+
+Options:
+        -g <sg-id>, --sg-id=sg-id       One or more AWS Security Group IDs to have rules revoked, for example: sg-0991226d9465e9d3f,sg-075926abf35435f88
+        -y, --yes                       Required to actually do anything. Otherwise do nothing [default: False]
+        -h, --help                      Show this help message and exit
+        --debug                         Show more verbose logging
+"""
+
+# Library to perform AWS API Calls/Handle exceptions
+import boto3
+import botocore.exceptions
+# Library to provide logging content from functions
+import logging
+# Library to benefit from AWSH logging tools
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+# Library to provide command line options (e.g. -y yes, -h help)
+import docopt
+# Library to read key, value from the options provided in the command line
+from future.utils import iteritems
+# This Library provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter.
+import sys
+
+check_imports()
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+##############################################################################
+# Functions
+##############################################################################
+
+def revoke_sg_rules():
+# Confirm there is an active AWS Session
+    try:
+        ec2 = boto3.client('ec2')
+    
+    except botocore.exceptions.NoRegionError as e:
+        _log.error("This command requires an active AWS session. Login first please!")
+        sys.exit()
+
+# Read the list of SG ID's provided
+    security_group_ids_info = [options["--sg-id"]]
+    security_group_ids = security_group_ids_info[0].split(',')
+
+# Check if security group ID's are valid
+    try:
+        for security_group_id in security_group_ids:
+            response = ec2.describe_security_group_references(
+                GroupId=[
+                    security_group_id,
+                ]
+            )
+
+    except botocore.exceptions.ClientError as e:
+        _log.error(e)
+        _log.error("Please make sure to provide a valid AWS Security Group ID, operation aborted!")
+        sys.exit()
+
+# If specified valid SG ID, proceed with rules removal
+    try:
+        for security_group_id in security_group_ids:
+
+            response = ec2.describe_security_group_rules(
+                    Filters=[
+                        {
+                            'Name': 'group-id',
+                            'Values': [
+                                security_group_id,
+                            ]
+                        },
+                    ],
+                )['SecurityGroupRules']
+
+# Filter ingress/egress rules and revoke them
+            sg_rule_ids_ingress = [x['SecurityGroupRuleId'] for x in response if x['IsEgress'] == False ]
+            sg_rule_ids_egress = [x['SecurityGroupRuleId'] for x in response if x['IsEgress'] == True]
+            for rule_ids_ingress in sg_rule_ids_ingress:
+                ec2.revoke_security_group_ingress(GroupId=security_group_id, SecurityGroupRuleIds=[rule_ids_ingress])
+            for rule_ids_egress in sg_rule_ids_egress:
+                ec2.revoke_security_group_egress(GroupId=security_group_id, SecurityGroupRuleIds=[rule_ids_egress])
+
+# After removed the ingress/egress rules, confirm how many rules are present (expected to be 0)
+            sg = ec2.describe_security_groups(GroupIds=[security_group_id])['SecurityGroups']
+            remaining_rule_count = len(sg[0]['IpPermissions']) + len(sg[0]['IpPermissionsEgress'])
+            _log.info('AWS Security Group ID {} now has {} rules present'.format(security_group_id, remaining_rule_count))
+
+    except ValueError as e:
+        _log.error(e)
+
+# Main function to handle options provided by the user
+def main(options):
+    if options["--debug"] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+    
+    for key, value in iteritems(options):
+        _log.debug("Command-line options: {}: {}".format(key, value))
+    
+    try:
+        if (options["--sg-id"]) and (options["--yes"] is True):
+            revoke_sg_rules()
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+    
+    except docopt.DocoptExit:
+        sys.exit(__doc__)
