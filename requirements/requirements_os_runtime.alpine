@@ -33,6 +33,7 @@ util-linux
 util-linux-bash-completion
 wget
 bat
+yq
 
 # Ruby runtime dependencies for the Terraforming tool
 ruby
