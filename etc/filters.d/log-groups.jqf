@@ -1,0 +1,7 @@
+#cmd: logs describe-log-groups
+#sort: logGroupName
+#tidy: awsh-arnchomp
+
+.logGroups | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

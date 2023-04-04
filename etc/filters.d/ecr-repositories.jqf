@@ -1,0 +1,7 @@
+#cmd: ecr describe-repositories
+#sort: repositoryName
+#tidy: awsh-arnchomp
+
+.repositories | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

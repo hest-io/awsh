@@ -1,0 +1,7 @@
+#cmd: cloudformation list-stacks
+#sort: StackId
+#tidy: awsh-arnchomp
+
+.StackSummaries | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
