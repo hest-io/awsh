@@ -1,0 +1,9 @@
+#foreach: cloudformation list-stacks | jq -r '.StackSummaries | .[] | .StackName'
+#cmd: cloudformation list-stack-resources --stack-name ${item}
+#enrich: jq --arg item "${item}" '(.StackResourceSummaries | .[] | .StackName) = $item'
+#sort: StackName,LogicalResourceId
+#tidy: awsh-arnchomp
+
+.[] | .StackResourceSummaries | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

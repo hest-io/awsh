@@ -1,11 +1,17 @@
 #cmd: rds describe-db-instances
-# xsort: VpcId,DBInstanceIdentifier,Name
+#sort: VpcId,DBInstanceIdentifier,DBName
 
-.DBInstances | .[] | (
+.DBInstances[] | (
     map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
 )
 +
+({
+    VpcId: ((.DBSubnetGroup|.VpcId) // "Unknown"),
+    Endpoint: ([(.Endpoint|.Address), (.Endpoint|.Port|tostring)]|join(":")),
+    DBOptionGroups: ([ .OptionGroupMemberships[].OptionGroupName ]|join(", ")),
+    ParameterGroups: ([ .DBParameterGroups[].DBParameterGroupName ]|join(", "))
+})
++
 (
-    (.Tags // [])|from_entries
+    (.TagList // [])|from_entries
 )
-

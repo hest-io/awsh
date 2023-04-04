@@ -1,0 +1,6 @@
+#cmd: sns list-topics
+#tidy: awsh-arnchomp
+
+.Topics | .[] | (
+   map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

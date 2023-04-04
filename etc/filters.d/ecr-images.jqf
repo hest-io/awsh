@@ -1,0 +1,9 @@
+#foreach: ecr describe-repositories | jq -r '.repositories | .[] | .repositoryName'
+#cmd: ecr list-images --repository-name ${item}
+#enrich: jq --arg item "${item}" '(.imageIds | .[] | .repositoryName) = $item'
+#sort: repositoryName,imageTag
+#tidy: awsh-arnchomp
+
+.[] | .imageIds | .[] | (
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
