@@ -1,6 +1,29 @@
 ARG ALPINE_VERSION=3.13
 
 ###############################################################################
+# Build stage
+###############################################################################
+
+# Build stage
+FROM golang:alpine${ALPINE_VERSION} AS build
+
+# Install git
+RUN apk add --no-cache git
+
+# Set the working directory
+WORKDIR /src
+
+# Clone the gocsv repository
+RUN git clone --depth 1 --branch v1.0.2 https://github.com/aotimme/gocsv.git .
+
+# Build the gocsv application
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -ldflags '-extldflags "-static"' -o /gocsv
+
+# Make the gocsv binary executable
+RUN chmod +x /gocsv
+
+
+###############################################################################
 # Base Container - Vanilla Toolset
 ###############################################################################
 
@@ -64,6 +87,10 @@ RUN \
 
 # Copy in Py requirement files
 COPY requirements/ ${AWSH_ROOT}/tmp/install
+
+# Copy the gocsv binary from the build stage
+COPY --from=build /gocsv /usr/local/bin/gocsv
+
 
 RUN \
     ## Downloading/Installing tools ##
