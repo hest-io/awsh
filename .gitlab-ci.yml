@@ -8,6 +8,7 @@ stages:
   - build
   - push
   - trigger_downstream
+  - compare
 
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
@@ -16,6 +17,10 @@ variables:
 services:
   - docker:dind
 
+include:
+  - project: 'hest-io/hestio-product/hestio-worx/autoworx/ci/templates'
+    file:
+      - 'Jobs/Docker/docker-compare-image-sizes.gitlab-ci.yml'
 
 ###############################################################################
 # Task Templates
@@ -123,3 +128,6 @@ trigger_blox_pipeline:
       https://gitlab.com/api/v4/projects/24214318/trigger/pipeline
   only:
     - master
+
+compare_image_sizes:
+  stage: compare
