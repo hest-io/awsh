@@ -34,6 +34,9 @@ util-linux-bash-completion
 wget
 bat
 yq
+fzf
+fzf-doc
+fzf-bash-completion
 
 # Ruby runtime dependencies for the Terraforming tool
 ruby

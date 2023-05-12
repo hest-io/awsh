@@ -73,6 +73,8 @@ ENV AWSH_CONTAINER docker
 ENV PATCHED_FONT_IN_USE no
 ENV AWSH_VERSION "${AWSH_BUILD_VERSION}"
 
+# FZF: Preview file content using bat (https://github.com/sharkdp/bat)
+ENV FZF_CTRL_T_OPTS "--height 40% --preview 'bat -n --color=always {}'"
 
 ###############################################################################
 # Main Docker image assembly for base layer
