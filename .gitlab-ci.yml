@@ -5,10 +5,11 @@ image:
   name: docker:19
 
 stages:
+  - init_checks
   - build
   - push
-  - trigger_downstream
   - compare
+  - trigger_downstream
 
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
@@ -28,7 +29,7 @@ include:
 .dockerfile_lint:
   allow_failure: true
   image: "hadolint/hadolint:latest-debian"
-  stage: build
+  stage: init_checks
   script:
     - mkdir -p reports
     - hadolint --no-fail -f gitlab_codeclimate .docker/Dockerfile.py3_alpine > reports/hadolint-$(md5sum .docker/Dockerfile.py3_alpine | cut -d" " -f1).json
@@ -114,6 +115,10 @@ push-label:
     - develop
 
 
+compare_image_sizes:
+  stage: compare
+
+
 trigger_blox_pipeline:
   stage: trigger_downstream
   before_script:
@@ -128,6 +133,3 @@ trigger_blox_pipeline:
       https://gitlab.com/api/v4/projects/24214318/trigger/pipeline
   only:
     - master
-
-compare_image_sizes:
-  stage: compare
