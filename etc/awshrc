@@ -32,6 +32,9 @@ export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_
 FV_TIMESTAMP_FORMAT='%Y-%m-%d_%H:%M:%S'
 export FV_TIMESTAMP_FORMAT
 
+# Define a session ID that can be used for ephemeral session data
+AWSH_SESSION_ID=$(uuidgen)
+
 ##############################################################################
 # Aliases
 ##############################################################################
@@ -42,7 +45,7 @@ alias cat='bat --paging=never --style plain'
 # Bo not edit below
 ################################################################################
 
-export TRUE FALSE AWSH_ROOT
+export TRUE FALSE AWSH_ROOT AWSH_SESSION_ID
 
 # Load the helper scripts
 for helper_script in ${AWSH_ROOT}/lib/functions.d/* ; do
