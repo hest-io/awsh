@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+"""
+Simple utility to interact with OpenAI. Using this command requires an OpenAI API Key.
+You can read more about getting an API key as well as how to get started at
+https://platform.openai.com/docs/introduction/overview
+
+Used for loading an INI format file and transforming it into a collection of
+shell environment variables with additional transformations for
+
+  - trimming all leading and trailing whitespace from both key and value variables
+  - use no prefix if the section name is "default"
+  - handle section values that are quoted using ' or "
+
+Given the example input.ini below the following environment variables will be set
+
+  [section1]
+  api_key = 129789yfiuhfkjbhf
+  fail_silent = false
+
+  [section2]
+  api_key = AKJHFGKJBNDNMBFKJHFF
+  color = "auto"
+
+This should result in the following environment variables and values being set
+if the output is loaded by the active shell
+
+  export SECTION1_API_KEY="129789yfiuhfkjbhf"
+  export SECTION1_FAIL_SILENT="false"
+  export SECTION1_API_KEY="AKJHFGKJBNDNMBFKJHFF"
+  export SECTION1_COLOR="auto"
+
+Usage:
+        awsh-config-parser [options] <file>
+        awsh-config-parser ( -h  |  --help )
+
+Options:
+        -h, --help                  Show this help message and exit
+        --debug                     Show more verbose logging
+"""
+
+# ruff: noqa: E501
+
+import logging
+import os
+import pickle
+import sys
+
+# Library to provide command line options (e.g. -c classic, -a application, -h help)
+import docopt
+import configparser
+
+# Library to benefit from AWSH logging tools
+from awshutils.logger import AWSHLog
+from awshutils import clean_up
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+
+def quote_if_needed(value):
+    if not (value.startswith("'") and value.endswith("'")) and not (value.startswith('"') and value.endswith('"')):
+        value = f'"{value}"'
+    return value
+
+
+def load_ini_file(file_path):
+
+    # Load or initialize question cache
+    try:
+
+      _log.debug(f"Attempting to load file: {file_path}")
+
+      config = configparser.ConfigParser()
+      config.read(file_path)
+
+      if len(config.sections()) > 0:
+
+        environment_updates = {}
+
+        # Attempt to load and parse all of the content before generating any output
+        for section in config.sections():
+            section_prefix = '' if section == 'default' else f'{section}_'
+
+            for key, value in config.items(section):
+                key = f'{section_prefix}{key}'.upper()
+                value = value.strip()
+                environment_updates[key] = value
+
+        for key, value in environment_updates.items():
+          print(f'export {key}={quote_if_needed(value)}')
+
+      else:
+        _log.error(f"Specified file: {file_path} not found or was empty")
+
+    except FileNotFoundError:
+        _log.error(f"Specified file: {file_path} not found")
+
+    except configparser.Error as ex:
+      _log.error(ex)
+
+
+
+# Main function to parse/tabulate the information generated from application and classic functions
+def main(options):
+    if options ["--debug"] is True:
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in options.items():
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    try:
+      load_ini_file(options["<file>"])
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    except docopt.DocoptExit:
+        sys.exit(__doc__)
+
+
+
+
+
