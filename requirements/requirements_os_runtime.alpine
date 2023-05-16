@@ -23,6 +23,7 @@ py3-pandas
 py3-paramiko
 py3-python-gssapi
 python3
+nano
 shadow
 sshpass
 sudo

@@ -40,6 +40,7 @@ AWSH_SESSION_ID=$(uuidgen)
 ##############################################################################
 
 alias cat='bat --paging=never --style plain'
+alias ask='/opt/awsh/bin/subcommands/awsh-ask'
 
 ################################################################################
 # Bo not edit below
@@ -51,6 +52,13 @@ export TRUE FALSE AWSH_ROOT AWSH_SESSION_ID
 for helper_script in ${AWSH_ROOT}/lib/functions.d/* ; do
     . "$helper_script"
 done
+
+# Load AWSH global config if found
+if [ -f "${HOME}/.awsh/config.d/awsh.conf" ]; then
+  global_config=$(mktemp /tmp/awsmfaXXXX)
+  "${AWSH_ROOT}/bin/tools/awsh-config-parser" "${HOME}/.awsh/config.d/awsh.conf" > "${global_config}"
+  . "${global_config}"
+fi
 
 # Update the PATH
 PATH=$PATH:${AWSH_ROOT}/bin
