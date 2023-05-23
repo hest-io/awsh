@@ -149,7 +149,7 @@ def predict(options):
 
     try:
         completion = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",  # 10x cheaper than davinci, and better. $0.002 per 1k tokens
+            model=os.getenv("OPENAI_MODEL", "gpt-3.5-turbo"),  # default: gpt-3.5-turbo - 10x cheaper than davinci, and better. $0.002 per 1k tokens
             messages=assistant_cache,
         )
         # Just the reply:
