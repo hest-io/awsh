@@ -59,7 +59,7 @@ logging.captureWarnings(True)
 openai.api_key = os.getenv("OPENAI_API_KEY")
 awsh_session_id = os.getenv("AWSH_SESSION_ID")
 assistant_cache = []
-session_content_buffer = "/tmp/awsh.assistant_cache.{awsh_session_id}"
+session_content_buffer = f"/tmp/awsh.assistant_cache.{awsh_session_id}"
 
 initial_context = [
     {
