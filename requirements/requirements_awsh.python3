@@ -33,6 +33,7 @@ csvkit==1.1.1
 # if you're interacting with AWS at the CLI on a regular basis
 saws>=0.4.3
 pre-commit>=2.17.0
+pwgen>=0.8.2
 
 # Work with Diagrams
 diagrams==0.23.1
