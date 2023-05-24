@@ -10,6 +10,7 @@ stages:
   - push
   - compare
   - trigger_downstream
+  - notify
 
 variables:
   DOCKERHUB_REGISTRY: "docker.io"
@@ -22,6 +23,7 @@ include:
   - project: 'hest-io/hestio-product/hestio-worx/autoworx/ci/templates'
     file:
       - 'Jobs/Docker/docker-compare-image-sizes.gitlab-ci.yml'
+      - 'Jobs/Notifications/release-slack-notify.gitlab-ci.yml'
 
 ###############################################################################
 # Task Templates
@@ -133,3 +135,6 @@ trigger_blox_pipeline:
       https://gitlab.com/api/v4/projects/24214318/trigger/pipeline
   only:
     - master
+
+release_slack_notify:
+  stage: notify
