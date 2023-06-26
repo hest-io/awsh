@@ -1,13 +1,16 @@
 #cmd: ecs describe-capacity-providers
 #tidy: awsh-arnchomp
 
-.capacityProviders[] | {
-    name,
-    status,
-    AutoScalingGroupArn: (.autoScalingGroupProvider.autoScalingGroupArn? // "None"),
-    ASGstatus: (.autoScalingGroupProvider.managedScaling.status? // "None"),
-    ASGtargetCapacity: (.autoScalingGroupProvider.managedScaling.status? // "None"),
-    ASGminimumScalingStepSize: (.autoScalingGroupProvider.managedScaling.minimumScalingStepSize? // "None"),
-    ASGmaximumScalingStepSize: (.autoScalingGroupProvider.managedScaling.maximumScalingStepSize? // "None"),
-    ASGinstanceWarmupPeriod: (.autoScalingGroupProvider.managedScaling.instanceWarmupPeriod? // "None")
-}
+.capacityProviders[]? |
+    {
+        AutoScalingGroupArn: (.autoScalingGroupProvider.autoScalingGroupArn? // "None"),
+        ASGstatus: (.autoScalingGroupProvider.managedScaling.status? // "None"),
+        ASGtargetCapacity: (.autoScalingGroupProvider.managedScaling.status? // "None"),
+        ASGminimumScalingStepSize: (.autoScalingGroupProvider.managedScaling.minimumScalingStepSize? // "None"),
+        ASGmaximumScalingStepSize: (.autoScalingGroupProvider.managedScaling.maximumScalingStepSize? // "None"),
+        ASGinstanceWarmupPeriod: (.autoScalingGroupProvider.managedScaling.instanceWarmupPeriod? // "None")
+    }
+    +
+    (   
+        del(.AutoScalingGroupArn, .ASGstatus, .ASGtargetCapacity, .ASGminimumScalingStepSize, .ASGmaximumScalingStepSize, .ASGinstanceWarmupPeriod ) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

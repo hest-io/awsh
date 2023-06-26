@@ -1,12 +1,14 @@
 #cmd: eks describe-addon-versions
 #sort: addonName,type
 
-(
-    .addons[] | .addonName as $addonName | .type as $type |.addonVersions | .[]? | {
+.addons[] | .addonName as $addonName | .type as $type |.addonVersions | .[]? |
+    {
         addonName: $addonName,
         type: $type,
-        addonVersion: .addonVersion,
-		architecture: .architecture | join(","),
-		clusterVersion: (.compatibilities | map(.clusterVersion) | join(","))
+        architecture: (if .architecture? // false then (.architecture | join(",")) else "None" end),
+        clusterVersion: (if .compatibilities? // false then (.compatibilities | map(.clusterVersion) | join(",")) else "None" end)
     }
-)
+    +
+    (   
+        del(.architecture, .clusterVersion, .addonName, .type) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

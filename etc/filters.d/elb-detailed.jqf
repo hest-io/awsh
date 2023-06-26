@@ -1,20 +1,21 @@
 #cmd: elb describe-load-balancers
 #sort: VPCId,LoadBalancerName,Scheme
 
-.LoadBalancerDescriptions[] | (
-{
-    VPCId,
-    LoadBalancerName,
-    Scheme,
-    DNSName,
-    Listeners: ([ .ListenerDescriptions[].Listener | "\(.Protocol)/\(.LoadBalancerPort)__to__\(.InstanceProtocol)/\(.InstancePort)" ] | join(", ")),
-    SSLCertificateId: ((.ListenerDescriptions[].Listener | .SSLCertificateId?) // "NA"),
-    HealthCheck: ( "\(.HealthCheck.Target) every \(.HealthCheck.Interval)s, timeout:\(.HealthCheck.Timeout)s, OK after \(.HealthCheck.HealthyThreshold), BAD after \(.HealthCheck.UnhealthyThreshold)" ),
-    SecurityGroups: (.SecurityGroups|join(", ")),
-    Subnets: (.Subnets|join(",")),
-    AvailabilityZones: (.AvailabilityZones|join(", ")),
-    Instances: ([ .Instances[].InstanceId ]|join(", "))
-}
-+
-((.Tags // [])|from_entries)
-)
+.LoadBalancerDescriptions[] |
+    {
+        Listeners: (if .ListenerDescriptions? // false then ([ .ListenerDescriptions[].Listener | "\(.Protocol)/\(.LoadBalancerPort)__to__\(.InstanceProtocol)/\(.InstancePort)" ] | join(", ")) else "None" end),
+        SSLCertificateId: (if .ListenerDescriptions? // false then (.ListenerDescriptions[].Listener | .SSLCertificateId?) else "NA" end),
+        HealthCheck: ( "\(.HealthCheck.Target) every \(.HealthCheck.Interval)s, timeout:\(.HealthCheck.Timeout)s, OK after \(.HealthCheck.HealthyThreshold), BAD after \(.HealthCheck.UnhealthyThreshold)" ),
+        SecurityGroups: (if .SecurityGroups? // false then ( .SecurityGroups | join(", ")) else "None" end),
+        Subnets: (if .Subnets? // false then ( .Subnets | join(", ")) else "None" end),
+        AvailabilityZones: (if .AvailabilityZones? // false then ( .AvailabilityZones | join(", ")) else "None" end),
+        Instances: (if .Instances? // false then ([ .Instances[].InstanceId ] | join(", ")) else "None" end)
+    }
+    +
+    (   
+        del(.Listeners, .SSLCertificateId, .HealthCheck, .SecurityGroups, .Subnets, .AvailabilityZones, .Instances) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+    +
+    (
+    (.Tags // [])|from_entries
+    )

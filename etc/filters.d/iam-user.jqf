@@ -2,10 +2,7 @@
 #sort: UserName,CreateDate
 #geo: global
 
-.Users | .[] | {
-    UserName,
-    CreateDate,
-    UserId,
-    PasswordLastUsed,
-    Arn
-}
+.Users | .[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

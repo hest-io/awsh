@@ -4,6 +4,7 @@
 #sort: repositoryName,imageTag
 #tidy: awsh-arnchomp
 
-.[] | .imageIds | .[] | (
-    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
-)
+.[] | .imageIds | .[] | 
+    (
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

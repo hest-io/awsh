@@ -2,12 +2,7 @@
 #sort: Name
 #geo: global
 
-.trailList | .[]? | {
-    Name,
-    S3BucketName,
-    HomeRegion,
-    IncludeGlobalServiceEvents,
-    IsMultiRegionTrail
-}
-
-
+.trailList[]? |
+    (
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

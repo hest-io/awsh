@@ -10,3 +10,7 @@
     (
         del(.computeEnvironment) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
     )
+    +
+    (
+    (.Tags // [])|from_entries
+    )

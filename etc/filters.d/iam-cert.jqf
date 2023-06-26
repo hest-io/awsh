@@ -2,10 +2,7 @@
 #sort: ServerCertificateName,Expiration,UploadDate,Arn
 #geo: global
 
-.ServerCertificateMetadataList[] | {
-    ServerCertificateName,
-    ServerCertificateId,
-    Expiration,
-    UploadDate,
-    Arn
-}
+.ServerCertificateMetadataList[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

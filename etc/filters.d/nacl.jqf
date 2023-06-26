@@ -1,17 +1,19 @@
 #cmd: ec2 describe-network-acls
 #sort: VpcId,NetworkAclId,RuleNumber
 
+.NetworkAcls[] | 
+{
+        Associations: (if .Associations? // false then ( [.Associations[]?.SubnetId] |join(", ")) else "None" end)
+}
++
 (
-    .NetworkAcls[] | .VpcId as $vpc_id | .NetworkAclId as $nacl_id | .Associations as $nacl_associations | .Tags as $tags | .Entries[]? | {
-        VpcId: $vpc_id,
-        NetworkAclId: $nacl_id,
-        Associations: (([ $nacl_associations[]?.SubnetId ]|join(", ")) // "NA"),
-        RuleNumber,
-        Protocol,
-        Egress,
-        CidrBlock,
-        RuleAction
-    }
-    +
-    (($tags // [])|from_entries)
+    del(.Associations) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
+)
++
+(
+    (.Entries[] // [])
 )

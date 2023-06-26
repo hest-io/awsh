@@ -1,17 +1,20 @@
 #cmd: batch describe-job-definitions
 #sort: jobDefinitionName,status
 
-.jobDefinitions[] | { 
-	jobDefinitionName,
-	status,
-	type,
-	revision,
-	containerImage: (.containerProperties?.image // "None"),
-	containerCommand: ( ( .containerProperties?.command // ["None"]) | join(" ")),
-	platformCapabilities: .platformCapabilities | join(", "),
-	resourceRequirements: (.containerProperties? |  [(.resourceRequirements[]? | map(.) | join(":") ) ] | join(",") ),
-	jobDefinitionArn,
-	publicIP: ( .containerProperties.networkConfiguration.assignPublicIp )
-}
-+
-( .tags // [])
+.jobDefinitions[]? |
+    {
+      containerImage: (if .computeResources?.image // false then (.containerProperties?.image) else "None" end),
+			containerCommand: (if .containerProperties?.command // false then (.containerProperties?.command | join(" ")) else "None" end),
+			platformCapabilities: (if .platformCapabilities // false then (.platformCapabilities | join(", ")) else "None" end),
+			resourceRequirements: (if .containerProperties? // false then (.containerProperties?.command | join(" ")) else "None" end),
+			containerCommand: (if .containerProperties?.command // false then ([(.resourceRequirements[]? | map(.) | join(":") ) ] | join(",")) else "None" end),
+			publicIP: (if .containerProperties.networkConfiguration.assignPublicIp // false then (.containerProperties.networkConfiguration.assignPublicIp) else "None" end)
+    }
+    + 
+    (
+      del(.containerImage, .containerCommand, .platformCapabilities, .resourceRequirements, .containerCommand, .publicIP) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+		+
+    (
+    (.Tags // [])|from_entries
+    )

@@ -2,10 +2,14 @@
 #sort: Name,Id
 #geo: global
 
-.HostedZones | .[]? | {
-    Name,
-    Id: (.Id|sub("\/hostedzone\/"; "")),
-    NumRecords: (.ResourceRecordSetCount // "0"),
-    IsPrivate: (.Config|.PrivateZone),
-    Comment: ((.Config|.Comment) // "None")
+.HostedZones | .[]? | 
+{
+        Id: (if .Id? // false then (.Id|sub("\/hostedzone\/"; "")) else "None" end),
+        NumRecords: (if .ResourceRecordSetCount? // false then ( .ResourceRecordSetCount ) else "0" end),
+        IsPrivate: (if .Config|.PrivateZone? // false then ( .Config|.PrivateZone ) else "NA" end),
+        Comment: (if .Config|.Comment? // false then ( .Config|.Comment ) else "None" end)
 }
++
+(
+    del(.Id, .NumRecords, .IsPrivate, .Comment) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

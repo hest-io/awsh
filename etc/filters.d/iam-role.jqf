@@ -2,8 +2,7 @@
 #sort: RoleName,CreateDate,Arn
 #geo: global
 
-.Roles | .[] | {
-    RoleName,
-    CreateDate,
-    Arn
-}
+.Roles | .[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

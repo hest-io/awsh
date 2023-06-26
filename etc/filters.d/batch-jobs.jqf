@@ -3,9 +3,12 @@
 #tidy: awsh-arnchomp
 #sort: jobName,status
 
-
-.[] | .jobSummaryList[] | {
-	jobName,
-	status,
-	jobArn
-}
+.[].jobSummaryList[]? |
+    {
+        createdAt: (if .createdAt? // false then (.createdAt / 1000 | todateiso8601) else "Never" end),
+        startedAt: (if .startedAt? // false then (.startedAt / 1000 | todateiso8601) else "Never" end)
+    }
+		+
+    (
+      del(.createdAt, .startedAt) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

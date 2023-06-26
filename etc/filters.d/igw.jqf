@@ -1,9 +1,13 @@
 #cmd: ec2 describe-internet-gateways
 #sort: InternetGatewayId,Name
 
-.InternetGateways | .[]? | {
-    InternetGatewayId,
-    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
-    State: ((.Attachments|.[0]|.State) // "Unknown"),
-    Attachment: ((.Attachments|.[0]|.VpcId) // "None")
-}
+.InternetGateways | .[]? |
+    {
+        Name: (if .Tags[]? // false then (.Tags[]?|select(.Key=="Name")|.Value) else "None" end),
+        State: (if .Attachments[]? // false then (.Attachments|.[0]|.State) else "Unknown" end),
+        Attachment: (if .Attachments[]? // false then (.Attachments|.[0]|.VpcId) else "None" end)
+    }
+    +
+    (   
+        del(.Name, .State, .Attachment) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

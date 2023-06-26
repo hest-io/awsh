@@ -1,11 +1,7 @@
 #cmd: ssm describe-instance-information
 #sort: IPAddress
 
-.InstanceInformationList | .[]? | {
-    InstanceId,
-    IPAddress,
-    ComputerName,
-    PingStatus,
-    AgentVersion,
-    PlatformName
-}
+.InstanceInformationList[]? | 
+(
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

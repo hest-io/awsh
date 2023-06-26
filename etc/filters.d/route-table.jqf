@@ -1,10 +1,13 @@
 #cmd: ec2 describe-route-tables
 #sort: VpcId,Name,RouteTableId
 
-.RouteTables[] | {
-    VpcId,
-    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
-    RouteTableId,
-    PropagatingVGWs: (.PropagatingVgws|join(", ")),
-    Associations: [(.Associations|.[]| .RouteTableAssociationId as $rta | (.SubnetId // "Main")  + " (" + $rta +")"  )] | join(", ")
+.RouteTables[] | 
+{
+        Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+        PropagatingVGWs: (if .PropagatingVgws? // false then ( .PropagatingVgws|join(", ") ) else "None" end),
+        Associations: [(.Associations|.[]| .RouteTableAssociationId as $rta | (.SubnetId // "Main")  + " (" + $rta +")"  )] | join(", ")
 }
++
+(
+    del(.Name, .PropagatingVGWs, .Associations) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

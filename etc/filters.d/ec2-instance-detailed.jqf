@@ -1,25 +1,22 @@
 #cmd: ec2 describe-instances
-#sort: VpcId,AZ,SubnetId,Name
+#sort: VpcId,AZ,SubnetId
 
-.Reservations[]["Instances"] | .[] | (
-{
-    VpcId,
-    AZ: (.Placement|.AvailabilityZone),
-    SubnetId,
-    State: (.State|.Name),
-    InstanceId,
-    PrivateIpAddress,
-    InstanceType,
-    Platform: (.Platform // "Unknown"),
-    KeyName,
-    IamInstanceProfile: ((.IamInstanceProfile | .Arn) // "None"),
-    ImageId,
-    Virt: .VirtualizationType,
-    SGs: ([ .SecurityGroups[].GroupId ]|join(",")),
-    PublicIpAddress: (.PublicIpAddress // "None"),
-    Monitoring: (.Monitoring|.State)
-}
-+
-((.Tags // [])|from_entries)
-)
-
+.Reservations[]["Instances"] | .[] |
+    {
+        AZ: (if .Placement|.AvailabilityZone? // false then (.Placement|.AvailabilityZone) else "None" end),
+        State: (if .State|.Name? // false then (.State|.Name) else "None" end),
+        Platform: (if .Platform? // false then (.Platform) else "Unknown" end),
+        IamInstanceProfile: (if .IamInstanceProfile | .Arn? // false then (.IamInstanceProfile | .Arn) else "None" end),
+        Virt: (if .VirtualizationType? // false then (.VirtualizationType) else "None" end),
+        SGs: (if .SecurityGroups[].GroupId? // false then ([ .SecurityGroups[].GroupId ]|join(",")) else "None" end),
+        PublicIpAddress: (if .PublicIpAddress? // false then (.PublicIpAddress) else "None" end),
+        Monitoring: (if .Monitoring|.State? // false then (.Monitoring|.State) else "None" end)
+    }
+    +
+    (   
+        del(.AZ, .State, .Platform, .IamInstanceProfile, .Virt, .SGs, .PublicIpAddress ) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+    +
+    (
+        (.Tags // [])|from_entries
+    )

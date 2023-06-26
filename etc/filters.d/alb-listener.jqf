@@ -4,17 +4,17 @@
 #sort: LoadBalancerName,Protocol
 #geo: regional
 
-.[] | .Listeners | .[] | (
-{
-    LoadBalancerName,
-    Protocol,
-    Port,
-    ListenerArn,
-    DefaultTargetGroupArn: (([ .DefaultActions[]?.TargetGroupArn ]|join(", ")) // "NA"),
-    SslPolicy: (.SslPolicy? // "NA"),
-    Certificates: (([ .Certificates[]?.CertificateArn ]|join(", ")) // "NA"),
-}
-+
-((.Tags // [])|from_entries)
-)
-
+.[].Listeners[]? |
+    {
+        SslPolicy: (if .SslPolicy? // false then (.SslPolicy) else "NA" end),
+        DefaultTargetGroupArn: (if .DefaultActions? // false then ([ .DefaultActions[]?.TargetGroupArn ] | join(", ")) else "NA" end),
+        Certificates: (if .Certificates? // false then ([ .Certificates[]?.CertificateArn ] | join(", ")) else "NA" end)
+    }
+    + 
+    (
+        del(.SslPolicy, .DefaultTargetGroupArn, .Certificates) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+    +
+    (
+    (.Tags // [])|from_entries
+    )

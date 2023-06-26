@@ -2,6 +2,7 @@
 #sort: repositoryName
 #tidy: awsh-arnchomp
 
-.repositories | .[] | (
-    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
-)
+.repositories | .[] | 
+    (
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

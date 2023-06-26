@@ -1,9 +1,12 @@
 #cmd: ec2 describe-vpn-gateways
 #sort: VpnGatewayId,Name
 
-.VpnGateways | .[]? | {
-    VpnGatewayId,
-    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
-    State,
-    Attachment: ((.VpcAttachments|.[0]|.VpcId) // "None")
+.VpnGateways[]? | 
+{
+        Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
+        Attachment: (if .VpcAttachments|.[0]|.VpcId? // false then (.VpcAttachments|.[0]|.VpcId) else "None" end)
 }
++
+(
+    del(.Name, .Attachment) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

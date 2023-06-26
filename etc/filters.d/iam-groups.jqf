@@ -2,8 +2,7 @@
 #sort: GroupName,CreateDate
 #geo: global
 
-.Groups | .[] | {
-    GroupName,
-    CreateDate,
-    Arn
-}
+.Groups | .[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
