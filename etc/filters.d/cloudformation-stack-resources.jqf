@@ -1,4 +1,4 @@
-#foreach: cloudformation list-stacks | jq -r '.StackSummaries | .[] | .StackName'
+#foreach: cloudformation list-stacks | jq -r '.StackSummaries | .[] | select(.StackStatus | test("DELETE_COMPLETE"; "i") | not) | .StackName'
 #cmd: cloudformation list-stack-resources --stack-name ${item}
 #enrich: jq --arg item "${item}" '(.StackResourceSummaries | .[] | .StackName) = $item'
 #sort: StackName,LogicalResourceId

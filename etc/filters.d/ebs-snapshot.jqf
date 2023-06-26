@@ -1,13 +1,11 @@
 #cmd: ec2 describe-snapshots --owner-ids=self
 #sort: StartTime,State
 
-.Snapshots | .[] | {
-    StartTime,
-    SnapshotId,
-    Description: (.Description // "None"),
-    VolumeId,
-    State,
-    VolumeSize,
-    Encrypted,
-    OwnerId
-}
+.Snapshots[]? |
+    {
+        Description: (.Description // "None")
+    }
+    +
+    (
+        del(.Description) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

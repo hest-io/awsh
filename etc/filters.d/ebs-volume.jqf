@@ -1,14 +1,13 @@
 #cmd: ec2 describe-volumes
 #sort: AvailabilityZone,VolumeType,State,CreateTime
 
-.Volumes | .[] | {
-    AvailabilityZone,
-    VolumeId,
-    VolumeType,
-    Size,
-    State,
-    Encrypted,
-    Attachment: ((.Attachments | .[0] | .InstanceId) // "None"),
-    AutoCleanup: ((.Attachments | .[0] | .DeleteOnTermination) // "False"),
-    CreateTime
-}
+
+.Volumes[]? |
+    {
+        Attachment: ((.Attachments | .[0] | .InstanceId) // "None"),
+        AutoCleanup: ((.Attachments | .[0] | .DeleteOnTermination) // "False")
+    }
+    +
+    (
+        del(.Attachment, .AutoCleanup) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

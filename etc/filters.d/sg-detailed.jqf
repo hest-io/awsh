@@ -1,11 +1,15 @@
-#cmd: ec2 describe-subnets
-#sort: VpcId,AvailabilityZone,CidrBlock,Name
+#cmd: ec2 describe-security-groups
+#sort: VpcId,GroupName,Name
 
-.Subnets[]? | 
+.SecurityGroups[]? | 
 {
         Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None")
 }
 +
 (
     del(.Name) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)
++
+(
+    (.Tags // [])|from_entries
 )

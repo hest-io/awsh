@@ -3,7 +3,11 @@
 #enrich: jq --arg item "${item}" '(.clusterName) = $item'
 #sort: clusterName
 
-.[] | {
-	clusterName,
-	updateIds: .updateIds | join(",")
-}
+.[] |
+    {
+        updateIds: (if .updateIds? // false then (.updateIds | join(",")) else "None" end)        
+    }
+    +
+    (   
+        del(.updateIds) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

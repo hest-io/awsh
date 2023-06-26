@@ -1,12 +1,14 @@
 #cmd: elb describe-load-balancers
 #sort: VPCId,LoadBalancerName,Scheme
 
-.LoadBalancerDescriptions[] | {
-    VPCId,
-    LoadBalancerName,
-    Scheme,
-    Listeners: ([ .ListenerDescriptions[].Listener | "\(.Protocol)/\(.LoadBalancerPort)__to__\(.InstanceProtocol)/\(.InstancePort)" ] | join(", ")),
-    HealthCheck: "\(.HealthCheck.Target)",
-    SecurityGroups: (.SecurityGroups|join(", ")),
-    Instances: ([ .Instances[].InstanceId ]|join(", "))
-}
+.LoadBalancerDescriptions[] |
+    {
+        Listeners: (if .ListenerDescriptions? // false then ([ .ListenerDescriptions[].Listener | "\(.Protocol)/\(.LoadBalancerPort)__to__\(.InstanceProtocol)/\(.InstancePort)" ] | join(", ")) else "None" end),
+        HealthCheck: ( "\(.HealthCheck.Target) every \(.HealthCheck.Interval)s, timeout:\(.HealthCheck.Timeout)s, OK after \(.HealthCheck.HealthyThreshold), BAD after \(.HealthCheck.UnhealthyThreshold)" ),
+        SecurityGroups: (if .SecurityGroups? // false then ( .SecurityGroups | join(", ")) else "None" end),
+        Instances: (if .Instances? // false then ([ .Instances[].InstanceId ] | join(", ")) else "None" end)
+    }
+    +
+    (   
+        del(.Listeners, .SSLCertificateId, .HealthCheck, .SecurityGroups, .Subnets, .AvailabilityZones, .Instances) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

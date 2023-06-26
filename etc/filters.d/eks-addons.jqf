@@ -2,7 +2,11 @@
 #cmd: eks list-addons --cluster-name ${item}
 #enrich: jq --arg item "${item}" '(.clusterName) = $item'
 
-.[] | {
-	clusterName,
-	addons: .addons | join(",")
-}
+.[] |
+    {
+        addons: (if .addons? // false then (.addons | join(",")) else "None" end)        
+    }
+    +
+    (   
+        del(.addons) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

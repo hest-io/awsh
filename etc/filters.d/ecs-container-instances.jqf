@@ -3,7 +3,11 @@
 #enrich: jq --arg item "${item}" '(.clusterName) = $item'
 #tidy: awsh-arnchomp
 
-.[] | {
-    clusterName,
-    containerInstanceArns: [(.containerInstanceArns[]? // "None")] | join(",")
-}
+.[]? |
+    {
+        containerInstanceArns: [(.containerInstanceArns[]? // "None")] | join(",")
+    }
+    +
+    (   
+        del(.containerInstanceArns ) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

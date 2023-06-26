@@ -3,12 +3,16 @@
 #enrich: jq --arg item "${item}" '(.InstanceId) = $item'
 #sort: CheckedInstanceId,IPAddress
 
-.[] | {
-    InstanceId,
-    CheckedInstanceId: ((.InstanceInformationList[0]? | .InstanceId) // "NA"),
-    IPAddress: ((.InstanceInformationList[0]? | .IPAddress) // "NA"),
-    ComputerName: ((.InstanceInformationList[0]? | .ComputerName) // "NA"),
-    PingStatus: ((.InstanceInformationList[0]? | .PingStatus) // "NA"),
-    AgentVersion: ((.InstanceInformationList[0]? | .AgentVersion) // "NA"),
-    PlatformName: ((.InstanceInformationList[0]? | .PlatformName) // "NA")
-}
+.[]? |
+    {
+        CheckedInstanceId: ((.InstanceInformationList[0]? | .InstanceId) // "NA"),
+        IPAddress: ((.InstanceInformationList[0]? | .IPAddress) // "NA"),
+        ComputerName: ((.InstanceInformationList[0]? | .ComputerName) // "NA"),
+        PingStatus: ((.InstanceInformationList[0]? | .PingStatus) // "NA"),
+        AgentVersion: ((.InstanceInformationList[0]? | .AgentVersion) // "NA"),
+        PlatformName: ((.InstanceInformationList[0]? | .PlatformName) // "NA")
+    }
+    +
+    (
+        del(.CheckedInstanceId, .IPAddress, .ComputerName, .PingStatus, .AgentVersion, .PlatformName) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

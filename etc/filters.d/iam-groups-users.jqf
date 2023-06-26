@@ -4,10 +4,7 @@
 #sort: GroupName,UserName
 #geo: global
 
-.[] | .Users | .[] | {
-    GroupName,
-    UserName,
-    PasswordLastUsed,
-    CreateDate,
-    Arn
-}
+.[] | .Users | .[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

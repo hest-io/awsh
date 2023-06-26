@@ -10,3 +10,7 @@
 (
     del(.Name, .CidrBlockAssociationSet) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
 )
++
+(
+    (.Tags // [])|from_entries
+)

@@ -1,12 +1,12 @@
 #cmd: elbv2 describe-load-balancers
 #sort: VpcId,LoadBalancerName,Scheme
 
-.LoadBalancers | .[] | {
-    VpcId,
-    LoadBalancerName,
-    Scheme,
-    Type,
-    SecurityGroups: ((.SecurityGroups|join(",")) // "none"),
-    AvailabilityZones: (( ([ .AvailabilityZones[].ZoneName ]) // "") | join(","))
-}
-
+.LoadBalancers[]? |
+    {
+        SecurityGroups: (if .SecurityGroups? // false then (.SecurityGroups|join(",")) else "none" end),
+        AvailabilityZones: (if .AvailabilityZones? // false then ([.AvailabilityZones[]?.ZoneName] | join(",")) else "" end)
+    }
+    + 
+    (
+        del(.SecurityGroups, .AvailabilityZones) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

@@ -1,17 +1,19 @@
 #cmd: ec2 describe-instances
 #tidy: awsh-arnchomp
-#sort: VpcId,AZ,SubnetId,Name
+#sort: VpcId,AZ,SubnetId
 
-.Reservations[]["Instances"] | .[] | {
-    VpcId,
-    AZ: (.Placement|.AvailabilityZone),
-    SubnetId,
-    Name: ((.Tags[]?|select(.Key=="Name")|.Value) // "None"),
-    State: (.State|.Name),
-    InstanceId,
-    PrivateIpAddress,
-    InstanceType,
-    KeyName,
-    PublicIpAddress: (.PublicIpAddress // "None"),
-    Description: ((.Tags[]?|select(.Key=="Description")|.Value) // "None")
-}
+.Reservations[]["Instances"] | .[] |
+    {
+        AZ: (.Placement|.AvailabilityZone),
+        State: (.State|.Name),
+        Platform: (.Platform // "Unknown"),
+        IamInstanceProfile: ((.IamInstanceProfile | .Arn) // "None"),
+        Virt: .VirtualizationType,
+        SGs: ([ .SecurityGroups[].GroupId ]|join(",")),
+        PublicIpAddress: (.PublicIpAddress // "None"),
+        Monitoring: (.Monitoring|.State),
+    }
+    +
+    (   
+        del(.AZ, .State, .Platform, .IamInstanceProfile, .Virt, .SGs, .PublicIpAddress ) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

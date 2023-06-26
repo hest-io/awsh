@@ -3,9 +3,13 @@
 
 .computeEnvironments[]? |
     {
-        computeResourceType: (if .computeResources? // false then (.computeResources.type) else "" end)
+        computeResourceType: (if .computeResources? // false then (.computeResources.type) else "None" end)
     }
-    + 
+    +
     (
         del(.computeResourceType) | map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+    +
+    (
+    (.Tags // [])|from_entries
     )

@@ -2,9 +2,7 @@
 #sort: Name
 #geo: global
 
-.Buckets | .[]? | {
-    Name,
-    CreationDate
-}
-
-
+.Buckets | .[]? | 
+(
+    map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+)

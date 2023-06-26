@@ -4,9 +4,7 @@
 #sort: RoleName,PolicyName
 #geo: global
 
-.[] | .AttachedPolicies | .[] | {
-    RoleName,
-    PolicyName,
-    PolicyArn
-}
-
+.[] | .AttachedPolicies | .[] |
+    (   
+        map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )

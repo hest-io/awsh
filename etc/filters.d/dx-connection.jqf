@@ -1,4 +1,11 @@
 #cmd: directconnect describe-connections
 #sort: ownerAccount,location,connectionName
 
-.connections[]
+.connections[]? |
+    (
+      map_values(del(select((.|iterables) ))) | del(.[] | select(. == null))
+    )
+    +
+    (
+    (.Tags // [])|from_entries
+    )
