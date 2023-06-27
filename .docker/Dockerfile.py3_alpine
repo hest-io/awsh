@@ -111,9 +111,10 @@ RUN \
     apk del build-dependencies && \
     # Add Terraforming Ruby tool
     gem install webrick:${SW_VER_WEBRICK} terraforming:${SW_VER_TERRAFORMING} ${AWSH_GEM_INSTALL_ARGS} && \
-    # Download and extract diff-so-fancy, fixuid, startship
-    curl -SsL -Z "https://raw.githubusercontent.com/so-fancy/diff-so-fancy/master/third_party/build_fatpack/diff-so-fancy" -o /usr/local/bin/diff-so-fancy \
-    "https://github.com/boxboat/fixuid/releases/download/v${SW_VER_FIXUID}/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz" -o /${AWSH_ROOT}/tmp/install/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz \
+    # Install diff-so-fancy
+    git clone --branch v1.4.4 https://github.com/so-fancy/diff-so-fancy.git /opt/diff-so-fancy && \
+    # Download and extract fixuid, startship
+    curl -SsL -Z "https://github.com/boxboat/fixuid/releases/download/v${SW_VER_FIXUID}/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz" -o /${AWSH_ROOT}/tmp/install/fixuid-${SW_VER_FIXUID}-linux-amd64.tar.gz \
     "https://github.com/starship/starship/releases/download/v${SW_VER_STARSHIP}/starship-x86_64-unknown-linux-musl.tar.gz" -o /${AWSH_ROOT}/tmp/install/starship-x86_64-unknown-linux-musl.tar.gz && \
     for gz in /${AWSH_ROOT}/tmp/install/*.gz; do tar -xvf $gz -C /usr/local/bin/ ; done && \
     # Install fixuid
@@ -129,10 +130,12 @@ RUN \
 RUN \
     ## Handling permissions and ownerships ##
     # Set the diff-so-fancy, fixuid, startship owner/group
-    chown root:root /usr/local/bin/diff-so-fancy /usr/local/bin/fixuid /usr/local/bin/starship && \
+    chown root:root /opt/diff-so-fancy/diff-so-fancy /usr/local/bin/fixuid /usr/local/bin/starship && \
     # Set the diff-so-fancy, fixuid, startship permissions
-    chmod 0755 /usr/local/bin/diff-so-fancy usr/local/bin/starship && \
+    chmod 0755 /opt/diff-so-fancy/diff-so-fancy usr/local/bin/starship && \
     chmod 4755 /usr/local/bin/fixuid && \
+    # Create symbolic links
+    ln -s /opt/diff-so-fancy/diff-so-fancy /usr/local/bin/diff-so-fancy && \
     # Add sudo permissions to allow users to make changes if needed inside the container
     echo 'awsh ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
