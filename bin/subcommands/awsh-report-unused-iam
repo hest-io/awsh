@@ -1,0 +1,251 @@
+#!/usr/bin/env python3
+"""
+Simple utility to list unused IAM resources
+
+Usage:
+    awsh-report-unused-iam [options]
+    awsh-report-unused-iam ( -h | --help )
+
+Options:
+    -f, --format=<format>   Table format: plain, simple, github, grid, fancy_grid,
+                            pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki,
+                            moinmoin, youtrack, html, unsafehtml, latex, latex_raw,
+                            latex_booktabs, latex_longtable, textile,
+                            tsv [default: simple]
+    --md-report             Create Markdown report
+    -h, --help              Show this help message and exit
+    --debug                 Show more verbose logging
+"""
+
+from tabulate import tabulate
+import pandas as pd
+import docopt
+from future.utils import iteritems
+import logging
+import sys
+from awshutils.logger import AWSHLog
+from airiam.find_unused.find_unused import find_unused
+from airiam.models import RuntimeReport
+from tabulate import tabulate
+
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+pd.set_option("display.width", 120)
+pd.set_option("display.max_colwidth", 120)
+
+
+def message(message, report):
+    print(message)
+    if report is True:
+        with open("unused-iam-report.md", "a") as f:
+            f.write(message)
+
+
+def report_unused(runtime_results: RuntimeReport, md_report) -> None:
+    print(
+        "\nIAM tool analysis report: Comprehensive review of IAM roles, permissions, and potential security risks conducted to ensure optimal AWS security posture.\n"
+    )
+
+    df_users = pd.DataFrame({})
+    unused = runtime_results.get_unused()
+    unused_users = unused["Users"]
+    if len(unused_users) > 0:
+        msg = f"## The following {len(unused_users)} users were found to be unused:"
+        message(msg, md_report)
+        for user in unused_users:
+            if user["LastUsed"] == -1:
+                last_used = "Never"
+            else:
+                last_used = user["LastUsed"]
+            df_users = df_users.append(
+                {"User": user["UserName"], "LastUsed": last_used}, ignore_index=True
+            )
+        message(
+            tabulate(df_users, headers="keys", tablefmt=options["--format"]) + "\n",
+            md_report,
+        )
+    else:
+        msg = "## No unused users were found in the account.\n"
+        message(msg, md_report)
+
+    df_access_keys = pd.DataFrame({})
+    unused_access_keys = unused["UnusedActiveAccessKeys"]
+    if len(unused_access_keys) > 0:
+        msg = f"## The following {len(unused_access_keys)} active access keys aren't being used:\n"
+        message(msg, md_report)
+        for access_key_obj in unused_access_keys:
+            df_access_keys = df_access_keys.append(
+                {
+                    "User": access_key_obj["User"],
+                    "AccessKey": access_key_obj["AccessKey"],
+                    "DaysSinceLastUse": access_key_obj["DaysSinceLastUse"],
+                },
+                ignore_index=True,
+            )
+        msg = (
+            tabulate(df_access_keys, headers="keys", tablefmt=options["--format"])
+            + "\n"
+        )
+        message(msg, md_report)
+    else:
+        msg = "## No unused access keys were found in the account.\n"
+        message(msg, md_report)
+
+    df_console_login_profiles = pd.DataFrame({})
+    unused_console_login_profiles = unused["UnusedConsoleLoginProfiles"]
+    if len(unused_console_login_profiles) > 0:
+        msg = f"## The following {len(unused_console_login_profiles)} users have password access they aren't using:\n"
+        message(msg, md_report)
+        for console_login_profile in unused_console_login_profiles:
+            has_mfa = console_login_profile["MFAEnabled"]
+            if has_mfa:
+                df_console_login_profiles = df_console_login_profiles.append(
+                    {
+                        "User": console_login_profile["User"],
+                        "MFA": "enabled",
+                        "DaysSinceLastUse": console_login_profile["DaysSinceLastUse"],
+                    },
+                    ignore_index=True,
+                )
+            else:
+                df_console_login_profiles = df_console_login_profiles.append(
+                    {
+                        "User": console_login_profile["User"],
+                        "MFA": "disabled",
+                        "DaysSinceLastUse": console_login_profile["DaysSinceLastUse"],
+                    },
+                    ignore_index=True,
+                )
+        msg = (
+            tabulate(
+                df_console_login_profiles, headers="keys", tablefmt=options["--format"]
+            )
+            + "\n"
+        )
+        message(msg, md_report)
+    else:
+        msg = "## No unused Console Login Profiles were found in the account.\n"
+        message(msg, md_report)
+
+    df_roles = pd.DataFrame({})
+    unused_roles = unused["Roles"]
+    if len(unused_roles) > 0:
+        msg = f"## The following {len(unused_roles)} roles are unused:\n"
+        message(msg, md_report)
+        for role in unused_roles:
+            if role["LastUsed"] == -1:
+                last_used = "Never"
+            else:
+                last_used = role["LastUsed"]
+            df_roles = df_roles.append(
+                {"UnusedRoles": role["RoleName"], "LastUsed": last_used},
+                ignore_index=True,
+            )
+        msg = tabulate(df_roles, headers="keys", tablefmt="pipe") + "\n"
+        message(msg, md_report)
+    else:
+        msg = "## No unused roles were found in the account.\n"
+        message(msg, md_report)
+
+    df_groups = pd.DataFrame({})
+    unused_groups = unused["Groups"]
+    if len(unused_groups) > 0:
+        msg = f"## The following {len(unused_groups)} groups are redundant:\n"
+        message(msg, md_report)
+        for group in unused_groups:
+            if len(group["AttachedManagedPolicies"] + group["GroupPolicyList"]) == 0:
+                df_groups = df_groups.append(
+                    {"Group": group["GroupName"], "AttachedPolicy": "false"},
+                    ignore_index=True,
+                )
+            else:
+                df_groups = df_groups.append(
+                    {"Group": group["GroupName"], "Members": "false"}, ignore_index=True
+                )
+        msg = tabulate(df_groups, headers="keys", tablefmt=options["--format"]) + "\n"
+        message(msg, md_report)
+    else:
+        msg = "## No redundant groups were found in the account.\n"
+        message(msg, md_report)
+
+    df_policies = pd.DataFrame({})
+    unused_policies = unused["Policies"]
+    if len(unused_policies) > 0:
+        msg = f"## The following {len(unused_policies)} policies are redundant:\n"
+        message(msg, md_report)
+        for policy in unused_policies:
+            df_policies = df_policies.append(
+                {"Policy": policy["PolicyName"], "HasAttachement": "false"},
+                ignore_index=True,
+            )
+        msg = tabulate(df_policies, headers="keys", tablefmt=options["--format"]) + "\n"
+        message(msg, md_report)
+    else:
+        msg = "## No unattached policies were found in the account.\n"
+        message(msg, md_report)
+
+    df_policy_attachement = pd.DataFrame({})
+    unused_policy_attachments = unused["PolicyAttachments"]
+    if len(unused_policy_attachments) > 0:
+        msg = f"## The following {len(unused_policy_attachments)} policy attachments are unused:\n"
+        message(msg, md_report)
+        for policy_attachment in unused_policy_attachments:
+            principal = (
+                policy_attachment.get("Role")
+                or policy_attachment.get("User")
+                or policy_attachment.get("Group")
+            )
+            df_policy_attachement = df_policy_attachement.append(
+                {
+                    "Policy": principal,
+                    "UnusedPrivileges": policy_attachment["PolicyArn"],
+                },
+                ignore_index=True,
+            )
+        msg = (
+            tabulate(
+                df_policy_attachement, headers="keys", tablefmt=options["--format"]
+            )
+            + "\n"
+        )
+        message(msg, md_report)
+    else:
+        msg = "## No unused policy attachments were found in the account.\n"
+        message(msg, md_report)
+
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+
+# main program function
+def main(options):
+    md_report = False
+    if options["--debug"] is True:
+        import logging
+
+        _log.setLevel(logging.DEBUG)
+
+    if options["--md-report"] is True:
+        md_report = True
+        options["--format"] = "pipe"
+
+    for key, value in iteritems(options):
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    runtime_results = find_unused(_log, None, False, 90, "find_unused")
+    report_unused(runtime_results, md_report)
+
+
+if __name__ == "__main__":
+    try:
+        options = docopt.docopt(__doc__)
+        main(options)
+
+    except docopt.DocoptExit:
+        sys.exit(__doc__)
