@@ -10,6 +10,7 @@ stages:
   - push
   - compare
   - trigger_downstream
+  - sync
   - notify
 
 variables:
@@ -24,6 +25,7 @@ include:
     file:
       - 'Jobs/Docker/docker-compare-image-sizes.gitlab-ci.yml'
       - 'Jobs/Notifications/release-slack-notify.gitlab-ci.yml'
+      - 'Jobs/Code/sync-gitlab-to-github.gitlab-ci.yml'
 
 ###############################################################################
 # Task Templates
@@ -133,6 +135,14 @@ trigger_blox_pipeline:
       -F token=${BLOX_PIPELINE_TRIGGER_TOKEN}
       -F ref=master
       https://gitlab.com/api/v4/projects/24214318/trigger/pipeline
+  only:
+    - master
+
+sync_gitlab_to_github:
+  stage: sync
+  variables:
+    GITHUB_REPO: "hest-io/awsh"
+    GITLAB_REPO: "hest-io/hestio-product/hestio-worx/awsh"
   only:
     - master
 

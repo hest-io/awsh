@@ -1,7 +1,8 @@
 # AWSH: AWesome SHell for Cloud
 
+![Opensource](https://img.shields.io/badge/open%20source%3F-YES!-651fff.svg?style=flat-square)
 [![GitHub license](https://img.shields.io/github/license/hest-io/awsh.svg?style=flat-square)](https://github.com/hest-io/awsh/blob/master/LICENSE)
-[![GitHub changelog](https://img.shields.io/badge/documentation-ONLINE-651fff.svg?style=flat-square)](https://worx.hest.io/awsh/)
+[![GitHub changelog](https://img.shields.io/badge/documentation-ONLINE-651fff.svg?style=flat-square)](https://worx.hest.io/tutorials/category/awsh-tutorials)
 [![Docker Pulls](https://img.shields.io/docker/pulls/hestio/awsh.svg)](https://hub.docker.com/r/hestio/awsh)
 
 ## What is AWSH?
