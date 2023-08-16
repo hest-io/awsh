@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# Check if a 'tasks.py' file exists in the current directory
+if [ -f ./tasks.py ]; then
+    # If a 'tasks.py' file exists, run the 'inv' command with the provided arguments
+    # The tasks to be run are defined in the 'tasks.py' file
+    command inv "$@"
+else
+    # If a 'tasks.py' file does not exist in the current directory, run the 'inv' command with the '--search-root' option
+    # The '--search-root' option is used to specify the directory where the 'inv' command should look for the 'tasks.py' file
+    # In this case, the 'inv' command will look for the 'tasks.py' file in the '/opt/awsh/lib/python' directory
+    # '/opt/awsh/lib/python/tasks.py' contains common tasks for routine operations
+    command inv --search-root="/opt/awsh/lib/python" "$@"
+fi
