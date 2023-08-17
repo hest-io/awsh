@@ -7,14 +7,15 @@ Usage:
     awsh-report-unused-iam ( -h | --help )
 
 Options:
-    -f, --format=<format>   Table format: plain, simple, github, grid, fancy_grid,
-                            pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki,
-                            moinmoin, youtrack, html, unsafehtml, latex, latex_raw,
-                            latex_booktabs, latex_longtable, textile,
-                            tsv [default: simple]
-    --md-report             Create Markdown report
-    -h, --help              Show this help message and exit
-    --debug                 Show more verbose logging
+    -f, --format=<format>         Table format: plain, simple, github, grid, fancy_grid,
+                                  pipe, orgtbl, jira, presto, pretty, psql, rst, mediawiki,
+                                  moinmoin, youtrack, html, unsafehtml, latex, latex_raw,
+                                  latex_booktabs, latex_longtable, textile,
+                                  tsv [default: simple]
+    -e, --export                  Export report to file
+    -o, --output-file=<file_name> File name for exported report [default: report-unused-iam.md]
+    -h, --help                    Show this help message and exit
+    --debug                       Show more verbose logging
 """
 
 from tabulate import tabulate
@@ -26,7 +27,6 @@ import sys
 from awshutils.logger import AWSHLog
 from airiam.find_unused.find_unused import find_unused
 from airiam.models import RuntimeReport
-from tabulate import tabulate
 
 
 # Logging setup
@@ -41,11 +41,11 @@ pd.set_option("display.max_colwidth", 120)
 def message(message, report):
     print(message)
     if report is True:
-        with open("unused-iam-report.md", "a") as f:
+        with open(options["--output-file"], "a") as f:
             f.write(message)
 
 
-def report_unused(runtime_results: RuntimeReport, md_report) -> None:
+def report_unused(runtime_results: RuntimeReport, export_to_file) -> None:
     print(
         "\nIAM tool analysis report: Comprehensive review of IAM roles, permissions, and potential security risks conducted to ensure optimal AWS security posture.\n"
     )
@@ -55,7 +55,7 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
     unused_users = unused["Users"]
     if len(unused_users) > 0:
         msg = f"## The following {len(unused_users)} users were found to be unused:"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for user in unused_users:
             if user["LastUsed"] == -1:
                 last_used = "Never"
@@ -66,17 +66,17 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
             )
         message(
             tabulate(df_users, headers="keys", tablefmt=options["--format"]) + "\n",
-            md_report,
+            export_to_file,
         )
     else:
         msg = "## No unused users were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_access_keys = pd.DataFrame({})
     unused_access_keys = unused["UnusedActiveAccessKeys"]
     if len(unused_access_keys) > 0:
         msg = f"## The following {len(unused_access_keys)} active access keys aren't being used:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for access_key_obj in unused_access_keys:
             df_access_keys = df_access_keys.append(
                 {
@@ -90,16 +90,16 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
             tabulate(df_access_keys, headers="keys", tablefmt=options["--format"])
             + "\n"
         )
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No unused access keys were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_console_login_profiles = pd.DataFrame({})
     unused_console_login_profiles = unused["UnusedConsoleLoginProfiles"]
     if len(unused_console_login_profiles) > 0:
         msg = f"## The following {len(unused_console_login_profiles)} users have password access they aren't using:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for console_login_profile in unused_console_login_profiles:
             has_mfa = console_login_profile["MFAEnabled"]
             if has_mfa:
@@ -126,16 +126,16 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
             )
             + "\n"
         )
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No unused Console Login Profiles were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_roles = pd.DataFrame({})
     unused_roles = unused["Roles"]
     if len(unused_roles) > 0:
         msg = f"## The following {len(unused_roles)} roles are unused:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for role in unused_roles:
             if role["LastUsed"] == -1:
                 last_used = "Never"
@@ -146,16 +146,16 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
                 ignore_index=True,
             )
         msg = tabulate(df_roles, headers="keys", tablefmt="pipe") + "\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No unused roles were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_groups = pd.DataFrame({})
     unused_groups = unused["Groups"]
     if len(unused_groups) > 0:
         msg = f"## The following {len(unused_groups)} groups are redundant:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for group in unused_groups:
             if len(group["AttachedManagedPolicies"] + group["GroupPolicyList"]) == 0:
                 df_groups = df_groups.append(
@@ -167,32 +167,32 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
                     {"Group": group["GroupName"], "Members": "false"}, ignore_index=True
                 )
         msg = tabulate(df_groups, headers="keys", tablefmt=options["--format"]) + "\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No redundant groups were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_policies = pd.DataFrame({})
     unused_policies = unused["Policies"]
     if len(unused_policies) > 0:
         msg = f"## The following {len(unused_policies)} policies are redundant:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for policy in unused_policies:
             df_policies = df_policies.append(
                 {"Policy": policy["PolicyName"], "HasAttachement": "false"},
                 ignore_index=True,
             )
         msg = tabulate(df_policies, headers="keys", tablefmt=options["--format"]) + "\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No unattached policies were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
     df_policy_attachement = pd.DataFrame({})
     unused_policy_attachments = unused["PolicyAttachments"]
     if len(unused_policy_attachments) > 0:
         msg = f"## The following {len(unused_policy_attachments)} policy attachments are unused:\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
         for policy_attachment in unused_policy_attachments:
             principal = (
                 policy_attachment.get("Role")
@@ -212,10 +212,10 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
             )
             + "\n"
         )
-        message(msg, md_report)
+        message(msg, export_to_file)
     else:
         msg = "## No unused policy attachments were found in the account.\n"
-        message(msg, md_report)
+        message(msg, export_to_file)
 
 
 ##############################################################################
@@ -225,21 +225,20 @@ def report_unused(runtime_results: RuntimeReport, md_report) -> None:
 
 # main program function
 def main(options):
-    md_report = False
+    export_to_file = False
     if options["--debug"] is True:
         import logging
 
         _log.setLevel(logging.DEBUG)
 
-    if options["--md-report"] is True:
-        md_report = True
-        options["--format"] = "pipe"
+    if options["--export"] is True:
+        export_to_file = True
 
     for key, value in iteritems(options):
         _log.debug("command-line options: {}: {}".format(key, value))
 
     runtime_results = find_unused(_log, None, False, 90, "find_unused")
-    report_unused(runtime_results, md_report)
+    report_unused(runtime_results, export_to_file)
 
 
 if __name__ == "__main__":
