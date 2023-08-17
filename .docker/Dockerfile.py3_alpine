@@ -54,9 +54,9 @@ ARG AWSH_GEM_INSTALL_ARGS="--no-document"
 # Controls for 3rd party software
 ###############################################################################
 ARG SW_VER_TERRAFORMING="0.18.0"
-ARG SW_VER_WEBRICK="1.6.0"
+ARG SW_VER_WEBRICK="1.8.1"
 ARG SW_VER_FIXUID="0.5.1"
-ARG SW_VER_STARSHIP="1.6.3"
+ARG SW_VER_STARSHIP="1.16.0"
 
 ###############################################################################
 # ENVs
