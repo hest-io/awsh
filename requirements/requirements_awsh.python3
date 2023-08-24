@@ -43,3 +43,6 @@ diagrams==0.23.3
 
 # LLM Model functionality for AI assistants
 openai>=0.27.6
+
+# Templated content generation using Jinja2
+jinja2-cli>=0.8.2
