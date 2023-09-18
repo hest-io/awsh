@@ -49,7 +49,7 @@ format = "[ ](bg:#000000 fg:#D7AFFF)$output"
 
 
 [git_branch]
-symbol = " "
+symbol = " "
 truncation_symbol = ""
 style = "bg:#00875f fg:#121212"
 format = "[ $symbol$branch ]($style)"
