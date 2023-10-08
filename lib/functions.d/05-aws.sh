@@ -26,6 +26,25 @@ function _aws_is_authenticated {
 }
 
 
+function _aws_update_aws_session {
+
+    local session_cache="$1"
+
+    AWS_SESSION_VARS=("AWS_SSH_KEY" "AWS_ID_NAME" "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "AWS_DEFAULT_REGION" "AWS_SECURITY_TOKEN" "AWS_SESSION_TOKEN" "AWS_TOKEN_EXPIRY" "AWS_SESSION_EXPIRATION")
+
+    # If we've been provided a session cache, load it first
+    if [ -f "${session_cache}" ]; then
+      source "${AWS_CONFIG_FILE}"
+    fi
+
+    # Export all of the known vars for use elsewhere
+    for next in "${AWS_SESSION_VARS[@]}"; do
+      export "$next"
+    done
+
+}
+
+
 # Helper function to load simple API keys from the environment
 function _aws_load_sso_credentials {
 
@@ -77,6 +96,8 @@ function _aws_load_sso_credentials {
 # Helper function to load simple API keys
 function _aws_load_basic_credentials {
 
+    _aws_logout
+
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
     cfg.section.default
@@ -92,34 +113,62 @@ function _aws_load_basic_credentials {
 
 function _aws_load_credentials_from_json {
 
+    _aws_logout
     AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
 
-    jq '.Credentials | {
-        AWS_ACCESS_KEY_ID: (.AccessKeyId),
-        AWS_SECRET_ACCESS_KEY: (.SecretAccessKey),
-        AWS_SESSION_TOKEN: ((.SessionToken) // ""),
-        AWS_SECURITY_TOKEN: ((.SessionToken) // ""),
-        AWS_EXPIRY: ((.Expiration) // "")
-        }' "${1}" \
-        | awsh-json2properties > "${AWS_CONFIG_FILE}"
+    # Set an initial region
+    echo 'AWS_DEFAULT_REGION="eu-west-1"' > "${AWS_CONFIG_FILE}"
 
-    source "${AWS_CONFIG_FILE}"
+    jq '.Credentials + .roleCredentials |
+          walk(if type=="object" then with_entries(.key|=ascii_downcase) else . end) |
+          {
+            AWS_ACCESS_KEY_ID: (.accesskeyid),
+            AWS_SECRET_ACCESS_KEY: (.secretaccesskey),
+            AWS_SESSION_TOKEN: ((.sessiontoken) // ""),
+            AWS_SECURITY_TOKEN: ((.sessiontoken) // ""),
+            AWS_EXPIRY: ((.expiration) // "")
+          }' "${1}" \
+        | tee /tmp/debug-buffer | awsh-json2properties >> "${AWS_CONFIG_FILE}"
+
+    _aws_update_aws_session "${AWS_CONFIG_FILE}"
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
-    let AWS_TOKEN_EXPIRY=$(date +"%s" --date "${AWS_EXPIRY}")
-    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date ${AWS_EXPIRY})
-    _screen_note "AWS_TOKEN_EXPIRES...... $expiry_time"
+    let AWS_TOKEN_EXPIRY=$(date +"%s" --date "$(_time_from_epoch "${AWS_EXPIRY}")")
+    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "$(_time_from_epoch "${AWS_EXPIRY}")")
 
-    # Set the session expiry if currently unset, based on the info we do have
-    : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+    # Check to determine if we have a valid set of credentials for use
+    if _aws_is_authenticated ; then
+        _screen_info "AWS_CONFIG_FILE........ $AWS_CONFIG_FILE"
+        _screen_info "AWS_DEFAULT_REGION..... $AWS_DEFAULT_REGION"
+        _screen_info "AWS_ACCESS_KEY_ID...... $AWS_ACCESS_KEY_ID"
+        _screen_info "AWS_SECRET_ACCESS_KEY.. $AWS_SECRET_ACCESS_KEY"
+        _screen_info "AWS_TOKEN_EXPIRES...... $expiry_time"
 
-    export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_DEFAULT_REGION
-    export AWS_SECURITY_TOKEN AWS_TOKEN_EXPIRY AWS_SESSION_TOKEN
+        _aws_load_account_metadata
+        if [[ ! -z ${AWS_ACCOUNT_ALIAS} ]]; then
+            AWS_ID_NAME="${AWS_ACCOUNT_ALIAS}"
+        fi
+
+        # Add user id info to name
+        AWS_ID_PATH="${AWS_ID_NAME}/$(basename "$(aws sts get-caller-identity | jq -r '.Arn')")"
+        AWS_ID_NAME="${AWS_ID_PATH}"
+
+        # Set the session expiry if currently unset, based on the info we do have
+        : "${AWS_SESSION_EXPIRATION:=$expiry_time}"
+
+        _aws_update_aws_session
+
+        # We now need to unset AWS_CONFIG_FILE to ensure that it's the AWS API
+        # variables that are detected and used
+        unset AWS_CONFIG_FILE
+    fi
 
 }
 
 
 function _aws_load_credentials_from_instance {
+
+    _aws_logout
 
     local instance_profile_id="$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
     local instance_region="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')"
@@ -137,6 +186,8 @@ function _aws_load_credentials_from_instance {
 
 function _aws_load_credentials_from_cloudshell {
 
+    _aws_logout
+
     # CloudSHell is already authenticated. We only need to pull out the credentials
     AWS_ID_NAME="$(aws sts get-caller-identity | jq -r '.Arn' | awk -F':' '{print $6}')"
     AWS_DEFAULT_REGION="${AWS_REGION}"
@@ -149,6 +200,8 @@ function _aws_load_credentials_from_cloudshell {
 
 # Helper function to get API keys using MFA token
 function _aws_load_mfaauth_credentials {
+
+    _aws_logout
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -198,6 +251,8 @@ function _aws_load_mfaauth_credentials {
 # Helper function to get API keys using ADFS based SAML2 authentication to AWS
 # after IDP form based login
 function _aws_load_krb5formauth_credentials {
+
+    _aws_logout
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -253,6 +308,8 @@ function _aws_load_krb5formauth_credentials {
 
 # Helper function to get API keys using MFA token
 function _aws_load_googleauth_credentials {
+
+    _aws_logout
 
     # Load the INI config and make it available for use
     _config_ini_parser "${1}"
@@ -547,8 +604,10 @@ function _aws_session_load {
     local -r CREDENTIALS_CACHE="/tmp/.aws-session-credentials-$(id -u)"
     if [[ -f "${CREDENTIALS_CACHE}" ]]; then
         source "${CREDENTIALS_CACHE}"
+        _screen_info 'AWS credentials loaded from cache'
+    else
+        _screen_warn 'No AWS credentials cache found.'
     fi
-    _screen_info 'AWS credentials loaded from cache'
 }
 
 
@@ -558,3 +617,5 @@ export -f _aws_logout
 export -f _aws_region
 export -f _aws_session_save
 export -f _aws_session_load
+export -f _aws_update_aws_session
+export -f _aws_load_credentials_from_json
