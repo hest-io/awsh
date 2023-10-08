@@ -10,7 +10,7 @@ stages:
   - push
   - compare
   - trigger_downstream
-  - sync
+#  - sync
   - notify
 
 variables:
@@ -138,13 +138,13 @@ trigger_blox_pipeline:
   only:
     - master
 
-sync_gitlab_to_github:
-  stage: sync
-  variables:
-    GITHUB_REPO: "hest-io/awsh"
-    GITLAB_REPO: "hest-io/hestio-product/hestio-worx/awsh"
-  only:
-    - master
+# sync_gitlab_to_github:
+#   stage: sync
+#   variables:
+#     GITHUB_REPO: "hest-io/awsh"
+#     GITLAB_REPO: "hest-io/hestio-product/hestio-worx/awsh"
+#   only:
+#     - master
 
 release_slack_notify:
   stage: notify
