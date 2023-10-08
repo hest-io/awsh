@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+
+"""
+Simple utility to process YAML based worX pattern defaults to (1) validate syntax
+and required keys or (2) create documentation in Markdown format.
+
+Usage:
+    worx-pattern [options] validate <file>
+    worx-pattern [options] docgen <file> <output>
+    worx-pattern ( -h | --help )
+
+Options:
+    -h, --help                    Show this help message and exit
+    --debug                       Show more verbose logging
+
+"""
+
+import os
+import yaml
+import json
+import docopt
+
+from jinja2 import Environment, FileSystemLoader
+
+from awshutils.logger import AWSHLog
+from awshutils import check_imports, clean_up
+
+from pprint import pprint as pp
+
+###############################################################################
+# CONFIG - Begin
+###############################################################################
+
+_OUTPUT_FILENAME = None
+_OUTPUT_HAS_WRITES = False
+_OUTPUT_FIRST_OF_FLAGS = {}
+
+_DOCGEN_CONTENT = {}
+
+_AWSH_ROOT = os.getenv('AWSH_ROOT', '')
+
+###############################################################################
+# CONFIG - End (Do Not Edit Below)
+###############################################################################
+
+_log = AWSHLog(__file__)
+check_imports()
+
+
+###############################################################################
+# Functions
+###############################################################################
+
+
+def exit_with_error(message):
+  _log.error(message)
+  clean_up(-1)
+
+
+def has_items(source, items):
+  return set(items).issubset(set(source))
+
+
+def assert_has_items(source, items, label=None):
+  context = f" for {label}" if label is not None else ""
+  if not has_items(source, items):
+    exit_with_error(f"Missing or unexpected item(s). Ensure {items} are present{context}")
+
+
+def is_none_or_empty(value):
+    return value is None or (isinstance(value, (list, dict)) and not value)
+
+
+def is_a_feature_block(data):
+  try:
+    return ("enabled" in data.keys()) and ("{}".format(data.get("enabled")).lower() in ["true", "false"])
+  except:
+    return False
+
+
+def is_a_unit_block(data):
+  try:
+      _ = data.items()
+  except (AttributeError, TypeError):
+      return False
+  else:
+    if "unit_features" in data.keys():
+      return True
+  return False
+
+
+def j2f_is_required(value):
+  if "required" in f"{value}".lower():
+    return True
+  return False
+
+
+def j2f_to_code_snippet(value):
+  json_content = None
+  yaml_content = None
+  simple_content = None
+  try:
+    json_content = json.dumps(json.loads(f"{value}"), indent=2)
+  except json.decoder.JSONDecodeError as e:
+    yaml_content = yaml.dump(yaml.safe_load(f"{value}"), indent=2)
+  except SyntaxError as e:
+    simple_content = eval(f'"{value}"')
+  finally:
+    return next((c for c in [json_content, yaml_content, simple_content ] if c is not None), f"{value}")
+
+
+def j2f_is_simple_variable(value):
+    if value is None or f"{value}".lower() in [ "null", "none"]:
+        return True
+    if isinstance(value, (int, float, str)):
+        if isinstance(value, str) and f"{value}".count('\n') > 0:
+            return False
+        if isinstance(value, str) and len(f"{value}") > 80:
+            return False
+        if isinstance(value, str) and '\n' not in value:
+            return True
+        elif isinstance(value, list):
+            for item in value:
+                if not j2f_is_simple_variable(item):
+                    return False
+            return True
+        return True
+    if isinstance(value, (dict, set)):
+        return False
+    return True
+
+
+def j2f_bool_to_feature_flag(variable):
+    if isinstance(variable, bool):
+        return "Enabled" if variable else "Disabled"
+    elif isinstance(variable, str):
+        variable_lower = variable.lower()
+        if variable_lower in ["true", "1", "yes", "on"]:
+            return "Enabled"
+    return "Disabled"
+
+
+def j2f_disruptive_to_span(variable):
+  if f"{variable}".lower() in ["true", "1", "yes"]:
+    return '<span className="badge-ff-is-disruptive">Disruptive</span>'
+  return '<span className="badge-ff-not-disruptive">Non-Disruptive</span>'
+
+
+def write_to_file(content):
+  global _OUTPUT_HAS_WRITES
+  global _OUTPUT_FILENAME
+  # First write should write without appending. Subsequent writes should
+  # append instead
+  if _OUTPUT_HAS_WRITES:
+    with open(_OUTPUT_FILENAME, 'a') as fh:
+      fh.write(content)
+  else:
+    _log.info(f"Writing to {_OUTPUT_FILENAME}")
+    with open(_OUTPUT_FILENAME, 'w') as fh:
+      fh.write(content)
+    _OUTPUT_HAS_WRITES = True
+
+
+def emit_with_template(template="root.j2", **kwargs):
+
+  # Create the jinja2 environment.
+  TEMPLATE_DIR = f"{_AWSH_ROOT}/etc/worx.d/templates/"
+  # Notice the use of trim_blocks, which greatly helps control whitespace.
+  j2_env = Environment(
+      loader=FileSystemLoader(TEMPLATE_DIR),
+      trim_blocks=True
+      )
+
+  # Add our custom filters
+  j2_env.filters['j2f_is_simple_variable'] = j2f_is_simple_variable
+  j2_env.filters['j2f_bool_to_feature_flag'] = j2f_bool_to_feature_flag
+  j2_env.filters['j2f_is_required'] = j2f_is_required
+  j2_env.filters['j2f_disruptive_to_span'] = j2f_disruptive_to_span
+  j2_env.filters['j2f_to_code_snippet'] = j2f_to_code_snippet
+
+  # Generate the HTML content
+  content = j2_env.get_template(template).render(**kwargs)
+  return content
+
+
+
+def emit_feature_doc_snippet(title="Default", **kwargs):
+
+  global _OUTPUT_FIRST_OF_FLAGS
+
+  emit_header = False
+  if not title in _OUTPUT_FIRST_OF_FLAGS.keys():
+    emit_header = True
+    _OUTPUT_FIRST_OF_FLAGS[title] = True
+
+  write_to_file(
+    emit_with_template(
+      template="single_feature.j2",
+      emit_header=emit_header,
+      title=title,
+      **kwargs
+    )
+  )
+
+
+def emit_options_doc_snippet(options, title="**Options**"):
+
+  write_to_file(
+    emit_with_template(
+      template="pattern_options.j2",
+      emit_header=True,
+      title=title,
+      options=options
+    )
+  )
+
+
+# Function to handle the "common_config" top-level key
+def process_common_block(data, block_id, action="validate"):
+    # pp(data)
+
+    _log.info(f"COMMON Processing section: {block_id}")
+
+    if action == "validate":
+
+      _log.info("COMMON Checking for required top level keys")
+      assert_has_items(data.keys(), ["default_tags", "prefix_tokens", "_debug_enabled"])
+
+      _log.info("COMMON Checking for required child keys in prefix_tokens")
+      assert_has_items(data['prefix_tokens'].keys(), ["org", "tenant", "lifecycle"], label="prefix_tokens")
+
+      _log.info("COMMON Checking for required child keys in default_tags")
+      assert_has_items(data['default_tags'].keys(), ["WorxPatternManager"], label="default_tags")
+
+      _log.info(f"COMMON All checks for {block_id} passed")
+
+    else:
+      _log.info(f"COMMON Nothing to do for action: {action}")
+
+
+
+# Function to handle the "pattern_features" top-level key
+def process_feature_block(data, block_id, action="validate", title="Pattern Features"):
+    _log.info(f"FEATURE Processing feature block for {block_id}")
+
+    if action in [ "validate", "docgen" ]:
+
+      for k, v in data.items():
+          if is_a_feature_block(v):
+
+            _log.info(f"FEATURE {k} is a feature. Checking for required info")
+            assert_has_items(v.keys(), ["enabled", "_description", "_disruptive"], label=f"feature: {k}")
+
+            feature_default_state = v.get("enabled")
+            feature_description = v.get("_description")
+            feature_disruptive = v.get("_disruptive")
+
+            feature_keys = [ f for f in v.keys() if f not in ["enabled", "_description", "_disruptive"] ]
+            _log.info(f"FEATURE Feature has {len(feature_keys)} options")
+
+            if action == "docgen":
+
+              emit_feature_doc_snippet(
+                title=title,
+                name=k,
+                description=feature_description,
+                disruptive=feature_disruptive,
+                default_state=feature_default_state,
+                options={ o: v[o] for o in feature_keys }
+                )
+
+            _log.info(f"FEATURE Processed feature {k} for {block_id}")
+
+          else:
+
+            exit_with_error(f"{k} defined in features but is not a valid feature block")
+
+    else:
+      _log.info(f"FEATURE Nothing to do for action: {action}")
+
+
+
+# Function to handle the "pattern_payload" top-level key
+def process_payload_block(data, block_id, action="validate"):
+    # pp(data)
+
+    _log.debug(f"PAYLOAD Processing payload block for {block_id}")
+
+    if action in [ "validate", "docgen" ]:
+
+      _log.debug("PAYLOAD Checking for required top level keys")
+      assert_has_items(data.keys(), ["defaults"])
+
+      # Process Pattern Defaults
+      if not is_none_or_empty(data["defaults"]):
+
+        without_pattern_child_blocks = {k:v for k,v in data["defaults"].items() if not is_a_unit_block(v)}
+        with_pattern_child_blocks = {k:v for k,v in data["defaults"].items() if is_a_unit_block(v)}
+
+        if action == "docgen":
+          _log.info(f"PAYLOAD Processing {len(without_pattern_child_blocks)} options from defaults")
+          emit_options_doc_snippet(without_pattern_child_blocks, title="Pattern Options")
+
+        for token_key, token_value in with_pattern_child_blocks.items():
+
+          if token_key == "unit_defaults":
+            _log.debug(f"{token_key} is a Unit pattern set of defaults")
+
+          elif is_a_unit_block(token_value):
+            _log.info(f"{token_key} contains Unit features, validating only")
+            process_feature_block(token_value, "unit_features", action="internal_config", title="Internal Unit Features")
+
+          else:
+            _log.debug(f"{token_key} is an option, default value is {token_value}")
+
+      # Unit Patterns
+      if "unit_defaults" in data.keys():
+
+        unit_defaults = data["unit_defaults"]
+        if "unit_features" in unit_defaults.keys():
+          process_feature_block(unit_defaults["unit_features"], "unit_features", action=action, title="Unit Features")
+
+        without_features = { k: v for k,v in unit_defaults.items() if k != "unit_features"}
+        _log.info(f"PAYLOAD Unit has {len(without_features)} options")
+
+        if action == "docgen":
+          emit_options_doc_snippet(without_features, title="Unit Options")
+
+      _log.info(f"PAYLOAD All checks for {block_id} passed")
+
+    else:
+      _log.debug(f"PAYLOAD Nothing to do for action: {action}")
+    # _log.debug(data["pattern_payload"])
+
+
+
+
+
+# Fallback function for unknown top-level keys
+def process_unknown_block(key, data):
+    _log.warning("Unknown key: {key}")
+    _log.debug(data[key])
+
+
+def main(options):
+    """
+    The main program function
+    """
+
+    global _OUTPUT_FILENAME
+
+    if options["--debug"] is True:
+        import logging
+
+        _log.setLevel(logging.DEBUG)
+
+    for key, value in options.items():
+        _log.debug("command-line options: {}: {}".format(key, value))
+
+    try:
+        defaults_file = options["<file>"]
+
+        if options["validate"]:
+          command = "validate"
+        elif options["docgen"]:
+          command = "docgen"
+          _OUTPUT_FILENAME = options["<output>"]
+        else:
+          command = "unknown"
+
+
+        key_handlers = {
+            "common_config": process_common_block,
+            "pattern_features": process_feature_block,
+            "pattern_payload": process_payload_block,
+        }
+
+        with open(defaults_file, "r") as file:
+            try:
+                yaml_data = yaml.safe_load(file)
+            except yaml.YAMLError as e:
+                _log.debug(f"YAML parsing error: {e}")
+                return
+
+        for key in yaml_data.keys():
+            if key in key_handlers:
+                key_handlers[key](yaml_data[key], block_id=key, action=command)
+            else:
+                process_unknown_block(yaml_data[key], block_id=key)
+
+    except AssertionError as e:
+        _log.warn(e)
+        clean_up(-1)
+
+    clean_up()
+
+
+if __name__ == "__main__":
+   try:
+    options = docopt.docopt(__doc__)
+    main(options)
+
+    # Handle invalid options
+   except docopt.DocoptExit as e:
+    print(e)
