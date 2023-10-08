@@ -25,7 +25,7 @@ include:
     file:
       - 'Jobs/Docker/docker-compare-image-sizes.gitlab-ci.yml'
       - 'Jobs/Notifications/release-slack-notify.gitlab-ci.yml'
-      - 'Jobs/Code/sync-gitlab-to-github.gitlab-ci.yml'
+
 
 ###############################################################################
 # Task Templates

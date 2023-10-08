@@ -4,11 +4,15 @@
 # FV_TIMESTAMP format
 function _time_from_epoch {
 
+    : "${FV_TIMESTAMP_FORMAT:='%Y-%m-%d %H:%M:%S'}"
+
     local ts_epoch="${1:--1}"
+    local ts_epoch_scale="${2:-1}"
+    local ts_epoch_length=${#ts_epoch}
     local re_number='^-?[0-9]+([.][0-9]+)?$'
 
     if ! [[ $ts_epoch =~ $re_number ]]; then
-        _log "$LINENO" "Provided variable $ts_epoch was not a number. Returning default"
+        # _log "$LINENO" "Provided variable $ts_epoch was not a number. Returning default"
         echo "$(date +"${FV_TIMESTAMP_FORMAT}" -d@0)"
         return 2
     fi
@@ -16,11 +20,17 @@ function _time_from_epoch {
     # If no input was passed then return the current date
     local ts_date
     if [ $ts_epoch -ge 0 ]; then
-        ts_date=$(date +"${FV_TIMESTAMP_FORMAT}" -d @${ts_epoch})
+
+        # If the epoch is longer than the normal length we will assume the value
+        # is in milliseconds
+        if [ $ts_epoch_length -gt 10 ]; then
+          ts_epoch_scale=1000
+        fi
+        ts_date=$(date +"${FV_TIMESTAMP_FORMAT}" -d @$(( ts_epoch / ts_epoch_scale )) )
     else
         ts_date=$(date +"${FV_TIMESTAMP_FORMAT}")
     fi
-    _log "$LINENO" "Converted ${ts_epoch} to ${ts_date}"
+    # _log "$LINENO" "Converted ${ts_epoch} to ${ts_date} at scale ${ts_epoch_scale}"
 
     echo "${ts_date}"
     return 0
