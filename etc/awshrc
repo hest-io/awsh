@@ -29,7 +29,7 @@ EVENT_OUTPUT_ENABLED=$FALSE
 export TTY_OUTPUT_ENABLED LOG_OUTPUT_ENABLED SYSLOG_OUTPUT_ENABLED EVENT_OUTPUT_ENABLED
 
 # Default timestamp format
-FV_TIMESTAMP_FORMAT='%Y-%m-%d_%H:%M:%S'
+FV_TIMESTAMP_FORMAT='%Y-%m-%d %H:%M:%S'
 export FV_TIMESTAMP_FORMAT
 
 # Define a session ID that can be used for ephemeral session data
