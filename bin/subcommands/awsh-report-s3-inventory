@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""
+Simple utility to generate S3 Inventory reports through Amazon Athena. 
+
+Reports available: StorageClasses, Top50PrefixesBySize, Top10FileExtensions
+                   Frequent/Infrequent/ArchiveInstant Total Size, 
+                   ArchiveInstant Files 
+
+Usage:
+        awsh-report-s3-inventory [( -d <database> -t <table> -o <output>)] [options]
+        awsh-report-s3-inventory -d s3_db -t athenatable -f 2023-06-18-01-00 -o s3://audit-eu-west-1/athenalogs/
+        awsh-report-s3-inventory (-h | --help)
+
+Options: 
+        -d <database>, --database=database Amazon Athena database
+        -t <table>, --table=table          Amazon Athena Table that holds the S3 Inventory table.
+        -o <output>, --output=output       AWS S3 bucket to output the queries performed
+        -h, --help                         Show this help message and exit
+        --debug                            Show more verbose logging
+"""
+
+import time
+import boto3
+import pandas as pd
+import botocore.exceptions
+# Library to parse LB's output as tabulate table
+from tabulate import tabulate
+# Library to provide logging content from functions
+import logging
+# Library to benefit from AWSH logging tools
+from awshutils.logger import AWSHLog
+from awshutils.config import get_config_from_file
+from awshutils import check_imports, clean_up
+# Library to parse command line options
+import docopt
+# This Library provides access to some variables used or maintained by the interpreter and to functions that interact strongly with the interpreter.
+import sys
+import os
+
+check_imports()
+
+# Logging setup
+_log = AWSHLog(__file__)
+_log.setLevel(logging.ERROR)
+logging.captureWarnings(True)
+
+
+def s3_inventory_reports():
+   athena_client = boto3.client('athena')
+   queries = [
+       {
+           'query': 'SELECT storage_class as StorageClass, intelligent_tiering_access_tier AS Intelligent_Tiering_Class, '
+                    'COUNT(*) AS ObjectCount, '
+                    'SUM(CASE WHEN is_latest = false THEN 1 ELSE 0 END) AS non_current_version_count, '
+                    'SUM(size) AS Size, SUM(size) / (1024.0 * 1024 * 1024) AS SizeGB, SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'WHERE (storage_class = \'STANDARD\' OR storage_class = \'INTELLIGENT_TIERING\') '
+                    'GROUP BY storage_class, intelligent_tiering_access_tier '
+                    'ORDER BY Size DESC ',
+           'query_name': 'StorageClasses'
+       },
+       {
+           'query': 'SELECT regexp_extract(key, \'([^/]+)/([^/]+)/\') AS directory_prefix, COUNT(*) AS object_count, '
+                   'SUM(CASE WHEN is_latest = false THEN 1 ELSE 0 END) AS non_current_version_count, '
+                    'SUM(CASE WHEN size <= 128 * 1024 THEN 1 ELSE 0 END) AS objects_under_or_128kb, '
+                    'SUM(CASE WHEN storage_class = \'STANDARD\' THEN 1 ELSE 0 END) AS number_objects_standard_class, '
+                    'SUM(CASE WHEN storage_class = \'INTELLIGENT_TIERING\' AND intelligent_tiering_access_tier = \'FREQUENT\' THEN 1 ELSE 0 END) '
+                    'AS number_objects_intelligent_class_frequent, '
+                    'SUM(CASE WHEN storage_class = \'INTELLIGENT_TIERING\' AND intelligent_tiering_access_tier = \'INFREQUENT\' THEN 1 ELSE 0 END) '
+                    'AS number_objects_intelligent_class_infrequent, '
+                    'SUM(CASE WHEN storage_class = \'INTELLIGENT_TIERING\' AND intelligent_tiering_access_tier = \'ARCHIVE_INSTANT_ACCESS\' THEN 1 ELSE 0 END) '
+                    'AS number_objects_intelligent_class_archive, '
+                    'SUM(size) Size, SUM(size) / (1024.0 * 1024 * 1024) AS SizeGB, SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB, ' 
+                    'MAX(from_unixtime(last_modified_date/1000)) AS modified_date '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'GROUP BY regexp_extract(key, \'([^/]+)/([^/]+)/\') '
+                    'ORDER BY Size DESC '
+                    'LIMIT 50;',
+
+           'query_name': 'Top50PrefixesBySize'
+       },
+       {
+           'query':   'SELECT COUNT(*) AS object_count, SUM(CASE WHEN is_latest = false THEN 1 ELSE 0 END) AS non_current_version_count, bucket, '
+                      'REGEXP_EXTRACT(key, \'\\.([^.]+)$\') AS extensions, '
+                      'SUM(size) AS Size, '
+                      'SUM(size) / (1024.0 * 1024 * 1024) AS SizeGB, '
+                      'SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB '
+                      'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                      'GROUP BY bucket, REGEXP_EXTRACT(key, \'\\.([^.]+)$\') '
+                      'ORDER BY Size DESC '
+                      'LIMIT 10;',
+             'query_name': 'Top10FileExtensions'
+       },
+       {
+           'query': 'SELECT SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'WHERE storage_class = \'INTELLIGENT_TIERING\' '
+                    'AND intelligent_tiering_access_tier IN (\'FREQUENT\') ',
+           'query_name': 'FrequentFilesTotalSize'
+       },
+       {
+           'query': 'SELECT SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'WHERE storage_class = \'INTELLIGENT_TIERING\' '
+                    'AND intelligent_tiering_access_tier IN (\'INFREQUENT\') ',
+           'query_name': 'InfrequentFilesTotalSize'
+       },
+       {
+           'query': 'SELECT SUM(size) / (1024.0 * 1024 * 1024 * 1024) AS SizeTB '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'WHERE storage_class = \'INTELLIGENT_TIERING\' '
+                    'AND intelligent_tiering_access_tier IN (\'ARCHIVE_INSTANT_ACCESS\') ',
+           'query_name': 'ArchiveInstantFilesTotalSize'
+       },
+       {
+           'query': 'SELECT bucket, key '
+                    'FROM "{}"."{}" '.format(options["--database"], options["--table"]) +
+                    'WHERE storage_class = \'INTELLIGENT_TIERING\' '
+                    'AND intelligent_tiering_access_tier IN (\'ARCHIVE_INSTANT_ACCESS\') ',
+           'query_name': 'ArchiveInstantFiles'
+       },
+
+   ]
+   try:
+      for query_info in queries:
+         query = query_info['query']
+         query_name = query_info['query_name']
+         response = athena_client.start_query_execution(
+             QueryString=query,
+             ResultConfiguration={
+                 'OutputLocation': options["--output"]
+             }
+         )      
+         query_execution_id = response['QueryExecutionId']      
+         while True:
+             query_status = athena_client.get_query_execution(
+                 QueryExecutionId=query_execution_id
+             )['QueryExecution']['Status']['State']      
+             if query_status in ['SUCCEEDED', 'FAILED', 'CANCELLED']:
+                 break      
+             time.sleep(10)      
+         
+         if query_status == 'SUCCEEDED':
+            _log.info(f"Athena query {query_name} has been successfully executed")
+            s3_bucket = options["--output"].split('/')[2]
+            s3_key = options["--output"].split('/', 3)[-1] + query_execution_id + '.csv'
+            download_file_path = os.path.join(os.getcwd(), query_execution_id + '.csv')
+            try:
+               s3_client = boto3.client('s3')
+               s3_client.download_file(s3_bucket, s3_key, download_file_path)
+            except botocore.exceptions.ClientError as e:
+               _log.error(e)
+            try:
+               s3_client.delete_object(Bucket=s3_bucket, Key=s3_key)
+               _log.info(f"The file {s3_key} has been successfully removed from the S3 {s3_bucket} bucket. Now only available locally.")
+            except botocore.exceptions.ClientError as e:
+               _log.error(e)
+            
+            new_folder_path = os.path.join(os.getcwd(), options["--table"])
+
+            if not os.path.exists(new_folder_path):
+               os.makedirs(new_folder_path)
+
+            os.rename(download_file_path, (os.path.join(new_folder_path, options["--table"] + '_' + query_name + '.csv')))
+            _log.info(f"{query_name} report has been successfully downloaded locally.")
+
+      
+         else:
+            results = athena_client.get_query_execution(
+                QueryExecutionId=query_execution_id
+            )['QueryExecution']['Status']['StateChangeReason']
+            _log.warn(results)
+            sys.exit()
+
+   except botocore.exceptions.ClientError as e:
+      _log.error(e)
+
+# Main function to handle options provided by the user
+def main(options):
+   if options["--debug"]:
+      import logging
+      _log.setLevel(logging.DEBUG)
+    
+   for key, value in options.items:
+      _log.debug("Command-line options: {}: {}".format(key, value))
+    
+   try:
+      if (options["--database"] and options["--date"]) and (options["--table"] and options["--output"]):
+         s3_inventory_reports()
+
+   except AssertionError as e:
+      _log.warn(e)
+      clean_up(-1)
+
+##############################################################################
+# Main Script/Loop
+##############################################################################
+
+if __name__ == "__main__":
+   try:
+      options = docopt.docopt(__doc__)
+      main(options)
+    
+   except docopt.DocoptExit:
+      sys.exit(__doc__)
