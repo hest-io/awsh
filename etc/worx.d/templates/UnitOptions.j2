@@ -1,0 +1,9 @@
+{% if data.items()|length > 0 %}
+## Unit Options
+
+{% for opt, opt_value in data.items() %}
+
+  {% include 'SingleOption.j2' %}
+
+{% endfor %}
+{% endif %}

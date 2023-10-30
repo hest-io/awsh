@@ -1,43 +1,31 @@
 #!/usr/bin/env python3
 
-"""
-Simple utility to process YAML based worX pattern defaults to (1) validate syntax
-and required keys or (2) create documentation in Markdown format.
-
-Usage:
-    worx-pattern [options] validate <file>
-    worx-pattern [options] docgen <file> <output>
-    worx-pattern ( -h | --help )
-
-Options:
-    -h, --help                    Show this help message and exit
-    --debug                       Show more verbose logging
-
-"""
-
 import os
 import yaml
 import json
-import docopt
+import click
+import re
+import functools
+
+import ruamel.yaml
+from ruamel.yaml.comments import CommentedMap, CommentedSeq
+from io import StringIO
+
+from typing import Any, List, Optional, Dict
+from pydantic import BaseModel, ConfigDict, model_validator, ValidationError
 
 from jinja2 import Environment, FileSystemLoader
 
 from awshutils.logger import AWSHLog
 from awshutils import check_imports, clean_up
 
-from pprint import pprint as pp
+from rich import print
 
 ###############################################################################
 # CONFIG - Begin
 ###############################################################################
 
-_OUTPUT_FILENAME = None
-_OUTPUT_HAS_WRITES = False
-_OUTPUT_FIRST_OF_FLAGS = {}
 
-_DOCGEN_CONTENT = {}
-
-_AWSH_ROOT = os.getenv('AWSH_ROOT', '')
 
 ###############################################################################
 # CONFIG - End (Do Not Edit Below)
@@ -48,76 +36,135 @@ check_imports()
 
 
 ###############################################################################
+# Classes for Pydantic model
+###############################################################################
+
+class PrefixTokens(BaseModel):
+    org: str = "HIO"
+    lifecycle: str = "dev"
+    tenant: Optional[str] = None
+    location: Optional[str] = None
+
+
+class DefaultTags(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    WorxPatternManager: str
+
+
+class DocGenConfiguration(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    ignored_paths: List[str] = ["one", "two"]
+
+
+class CommonConfig(BaseModel):
+    prefix_tokens: PrefixTokens
+    default_tags: DefaultTags
+    _debug_enabled: Optional[bool] = False
+    docgen: Optional[DocGenConfiguration] = {}
+
+
+class Feature(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    enabled: bool
+    md: Dict[str, Any] = {}
+
+    @model_validator(mode='before')
+    @classmethod
+    def preprocess_metadata(cls, data):
+        if isinstance(data, dict):
+            # build a dict with any keys that start with "WORX_"
+            md_dict = {key: value for key, value in data.items() if key.startswith("WORX_")}
+            # move those meta-data keys into the "md" dict after transforming their cleaning up their keys
+            data["md"] = { k.replace("WORX_", "").lower(): v for k,v in md_dict.items() }
+            # remove any of the keys from the data that are now present in the meta-data
+            data = { k: v for k,v in data.items() if k not in md_dict.keys() }
+        return data
+
+    @model_validator(mode='after')
+    def ensure_minimum_metadata(self):
+        required_metadata = ["description", "disruptive"]
+        for k in required_metadata:
+          if k not in self.md.keys():
+            raise ValueError(f"Required meta-data comment missing for 'WORX_{k.upper()}'")
+        return self
+
+
+class Defaults(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+
+class UnitDefaults(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    unit_features: Dict[str, Feature]
+
+
+class PatternPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    defaults: Dict[str, Any]
+    unit_defaults: Optional[UnitDefaults] = { }
+
+
+class Configuration(BaseModel):
+    common_config: CommonConfig
+    pattern_features: Dict[str, Feature]
+    pattern_payload: PatternPayload
+
+
+###############################################################################
 # Functions
 ###############################################################################
 
 
 def exit_with_error(message):
-  _log.error(message)
-  clean_up(-1)
-
-
-def has_items(source, items):
-  return set(items).issubset(set(source))
-
-
-def assert_has_items(source, items, label=None):
-  context = f" for {label}" if label is not None else ""
-  if not has_items(source, items):
-    exit_with_error(f"Missing or unexpected item(s). Ensure {items} are present{context}")
-
-
-def is_none_or_empty(value):
-    return value is None or (isinstance(value, (list, dict)) and not value)
-
-
-def is_a_feature_block(data):
-  try:
-    return ("enabled" in data.keys()) and ("{}".format(data.get("enabled")).lower() in ["true", "false"])
-  except:
-    return False
-
-
-def is_a_unit_block(data):
-  try:
-      _ = data.items()
-  except (AttributeError, TypeError):
-      return False
-  else:
-    if "unit_features" in data.keys():
-      return True
-  return False
+    _log.error(message)
+    clean_up(-1)
 
 
 def j2f_is_required(value):
-  if "required" in f"{value}".lower():
-    return True
-  return False
+    if "required" in f"{value}".lower():
+        return True
+    return False
 
 
 def j2f_to_code_snippet(value):
-  json_content = None
-  yaml_content = None
-  simple_content = None
-  try:
-    json_content = json.dumps(json.loads(f"{value}"), indent=2)
-  except json.decoder.JSONDecodeError as e:
-    yaml_content = yaml.dump(yaml.safe_load(f"{value}"), indent=2)
-  except SyntaxError as e:
-    simple_content = eval(f'"{value}"')
-  finally:
-    return next((c for c in [json_content, yaml_content, simple_content ] if c is not None), f"{value}")
+    json_content = None
+    yaml_content = None
+    simple_content = None
+    # _log.debug(f"value = {value}")
+
+    try:
+        json_content = json.dumps(json.loads(f"{value}"), indent=2)
+    except json.decoder.JSONDecodeError as e:
+        _log.debug(f"Failed during attempted JSON transformation {e}")
+
+    try:
+        if '\n' in value:
+          yaml_content = f"{value}"
+        else:
+          yaml_content = yaml.dump(value, width=2147483647)
+    except (yaml.YAMLError, KeyError, IndexError, ValueError, TypeError) as e:
+        _log.debug(f"Failed during attempted YAML transformation {e}")
+
+    try:
+        simple_content = f"{value}"
+    except SyntaxError as e:
+        _log.warning(f"Failed during attempted default transformation {e}")
+
+    #_log.debug(f"json_content = {json_content}")
+    #_log.debug(f"yaml_content = {yaml_content}")
+    #_log.debug(f"simple_content = {simple_content}")
+    return next((c for c in [json_content, yaml_content, simple_content] if c is not None), f"{value}")
 
 
 def j2f_is_simple_variable(value):
-    if value is None or f"{value}".lower() in [ "null", "none"]:
+    if value is None or f"{value}".lower() in ["null", "none"]:
         return True
     if isinstance(value, (int, float, str)):
-        if isinstance(value, str) and f"{value}".count('\n') > 0:
+        if isinstance(value, str) and f"{value}".count("\n") > 0:
             return False
         if isinstance(value, str) and len(f"{value}") > 80:
             return False
-        if isinstance(value, str) and '\n' not in value:
+        if isinstance(value, str) and "\n" not in value:
             return True
         elif isinstance(value, list):
             for item in value:
@@ -140,266 +187,200 @@ def j2f_bool_to_feature_flag(variable):
     return "Disabled"
 
 
-def j2f_disruptive_to_span(variable):
-  if f"{variable}".lower() in ["true", "1", "yes"]:
-    return '<span className="badge-ff-is-disruptive">Disruptive</span>'
-  return '<span className="badge-ff-not-disruptive">Non-Disruptive</span>'
-
-
-def write_to_file(content):
-  global _OUTPUT_HAS_WRITES
-  global _OUTPUT_FILENAME
-  # First write should write without appending. Subsequent writes should
-  # append instead
-  if _OUTPUT_HAS_WRITES:
-    with open(_OUTPUT_FILENAME, 'a') as fh:
-      fh.write(content)
-  else:
-    _log.info(f"Writing to {_OUTPUT_FILENAME}")
-    with open(_OUTPUT_FILENAME, 'w') as fh:
-      fh.write(content)
-    _OUTPUT_HAS_WRITES = True
-
-
-def emit_with_template(template="root.j2", **kwargs):
-
-  # Create the jinja2 environment.
-  TEMPLATE_DIR = f"{_AWSH_ROOT}/etc/worx.d/templates/"
-  # Notice the use of trim_blocks, which greatly helps control whitespace.
-  j2_env = Environment(
-      loader=FileSystemLoader(TEMPLATE_DIR),
-      trim_blocks=True
-      )
-
-  # Add our custom filters
-  j2_env.filters['j2f_is_simple_variable'] = j2f_is_simple_variable
-  j2_env.filters['j2f_bool_to_feature_flag'] = j2f_bool_to_feature_flag
-  j2_env.filters['j2f_is_required'] = j2f_is_required
-  j2_env.filters['j2f_disruptive_to_span'] = j2f_disruptive_to_span
-  j2_env.filters['j2f_to_code_snippet'] = j2f_to_code_snippet
-
-  # Generate the HTML content
-  content = j2_env.get_template(template).render(**kwargs)
-  return content
-
-
-
-def emit_feature_doc_snippet(title="Default", **kwargs):
-
-  global _OUTPUT_FIRST_OF_FLAGS
-
-  emit_header = False
-  if not title in _OUTPUT_FIRST_OF_FLAGS.keys():
-    emit_header = True
-    _OUTPUT_FIRST_OF_FLAGS[title] = True
-
-  write_to_file(
-    emit_with_template(
-      template="single_feature.j2",
-      emit_header=emit_header,
-      title=title,
-      **kwargs
-    )
-  )
-
-
-def emit_options_doc_snippet(options, title="**Options**"):
-
-  write_to_file(
-    emit_with_template(
-      template="pattern_options.j2",
-      emit_header=True,
-      title=title,
-      options=options
-    )
-  )
-
-
-# Function to handle the "common_config" top-level key
-def process_common_block(data, block_id, action="validate"):
-    # pp(data)
-
-    _log.info(f"COMMON Processing section: {block_id}")
-
-    if action == "validate":
-
-      _log.info("COMMON Checking for required top level keys")
-      assert_has_items(data.keys(), ["default_tags", "prefix_tokens", "_debug_enabled"])
-
-      _log.info("COMMON Checking for required child keys in prefix_tokens")
-      assert_has_items(data['prefix_tokens'].keys(), ["org", "tenant", "lifecycle"], label="prefix_tokens")
-
-      _log.info("COMMON Checking for required child keys in default_tags")
-      assert_has_items(data['default_tags'].keys(), ["WorxPatternManager"], label="default_tags")
-
-      _log.info(f"COMMON All checks for {block_id} passed")
-
-    else:
-      _log.info(f"COMMON Nothing to do for action: {action}")
-
-
-
-# Function to handle the "pattern_features" top-level key
-def process_feature_block(data, block_id, action="validate", title="Pattern Features"):
-    _log.info(f"FEATURE Processing feature block for {block_id}")
-
-    if action in [ "validate", "docgen" ]:
-
-      for k, v in data.items():
-          if is_a_feature_block(v):
-
-            _log.info(f"FEATURE {k} is a feature. Checking for required info")
-            assert_has_items(v.keys(), ["enabled", "_description", "_disruptive"], label=f"feature: {k}")
-
-            feature_default_state = v.get("enabled")
-            feature_description = v.get("_description")
-            feature_disruptive = v.get("_disruptive")
-
-            feature_keys = [ f for f in v.keys() if f not in ["enabled", "_description", "_disruptive"] ]
-            _log.info(f"FEATURE Feature has {len(feature_keys)} options")
-
-            if action == "docgen":
-
-              emit_feature_doc_snippet(
-                title=title,
-                name=k,
-                description=feature_description,
-                disruptive=feature_disruptive,
-                default_state=feature_default_state,
-                options={ o: v[o] for o in feature_keys }
-                )
-
-            _log.info(f"FEATURE Processed feature {k} for {block_id}")
-
-          else:
-
-            exit_with_error(f"{k} defined in features but is not a valid feature block")
-
-    else:
-      _log.info(f"FEATURE Nothing to do for action: {action}")
-
-
-
-# Function to handle the "pattern_payload" top-level key
-def process_payload_block(data, block_id, action="validate"):
-    # pp(data)
-
-    _log.debug(f"PAYLOAD Processing payload block for {block_id}")
-
-    if action in [ "validate", "docgen" ]:
-
-      _log.debug("PAYLOAD Checking for required top level keys")
-      assert_has_items(data.keys(), ["defaults"])
-
-      # Process Pattern Defaults
-      if not is_none_or_empty(data["defaults"]):
-
-        without_pattern_child_blocks = {k:v for k,v in data["defaults"].items() if not is_a_unit_block(v)}
-        with_pattern_child_blocks = {k:v for k,v in data["defaults"].items() if is_a_unit_block(v)}
-
-        if action == "docgen":
-          _log.info(f"PAYLOAD Processing {len(without_pattern_child_blocks)} options from defaults")
-          emit_options_doc_snippet(without_pattern_child_blocks, title="Pattern Options")
-
-        for token_key, token_value in with_pattern_child_blocks.items():
-
-          if token_key == "unit_defaults":
-            _log.debug(f"{token_key} is a Unit pattern set of defaults")
-
-          elif is_a_unit_block(token_value):
-            _log.info(f"{token_key} contains Unit features, validating only")
-            process_feature_block(token_value, "unit_features", action="internal_config", title="Internal Unit Features")
-
-          else:
-            _log.debug(f"{token_key} is an option, default value is {token_value}")
-
-      # Unit Patterns
-      if "unit_defaults" in data.keys():
-
-        unit_defaults = data["unit_defaults"]
-        if "unit_features" in unit_defaults.keys():
-          process_feature_block(unit_defaults["unit_features"], "unit_features", action=action, title="Unit Features")
-
-        without_features = { k: v for k,v in unit_defaults.items() if k != "unit_features"}
-        _log.info(f"PAYLOAD Unit has {len(without_features)} options")
-
-        if action == "docgen":
-          emit_options_doc_snippet(without_features, title="Unit Options")
-
-      _log.info(f"PAYLOAD All checks for {block_id} passed")
-
-    else:
-      _log.debug(f"PAYLOAD Nothing to do for action: {action}")
-    # _log.debug(data["pattern_payload"])
-
-
-
-
-
-# Fallback function for unknown top-level keys
-def process_unknown_block(key, data):
-    _log.warning("Unknown key: {key}")
-    _log.debug(data[key])
-
-
-def main(options):
-    """
-    The main program function
-    """
-
-    global _OUTPUT_FILENAME
-
-    if options["--debug"] is True:
-        import logging
-
-        _log.setLevel(logging.DEBUG)
-
-    for key, value in options.items():
-        _log.debug("command-line options: {}: {}".format(key, value))
+def j2f_is_disruptive(variable):
+    if f"{variable}".lower() in ["true", "1", "yes"]:
+        return True
+    return False
+
+
+def yaml_has_path(yaml_content, target_path):
+    _log.debug(f"Testing for presence of {target_path} in YAML tree")
+    def check_path(obj, path_parts):
+        if not obj:
+            return False
+        if len(path_parts) == 1:
+            return path_parts[0] in obj
+        else:
+            next_key = path_parts[0]
+            if isinstance(obj, dict) and next_key in obj:
+                return check_path(obj[next_key], path_parts[1:])
+            elif isinstance(obj, list) and next_key.isdigit():
+                index = int(next_key)
+                if 0 <= index < len(obj):
+                    return check_path(obj[index], path_parts[1:])
+            return False
+
+    path_parts = target_path.split('.')
+    return check_path(yaml_content, path_parts)
+
+
+def yaml_get_value_by_dotpath(yaml_content, path):
+    return functools.reduce(lambda c, k: c[k], path.split('.'), yaml_content)
+
+
+def yaml_remove_keys_with_dotpath(yaml_data, dotpath_expressions):
+    for entry in dotpath_expressions:
+      yaml_data = yaml_remove_key_with_dotpath(yaml_data, entry)
+    return yaml_data
+
+
+def yaml_remove_key_with_dotpath(yaml_data, dotpath_expression):
+    def recursive_remove(obj, keys):
+        if isinstance(obj, CommentedMap):
+            for key in list(obj):
+                new_keys = keys + [key]
+                if '.'.join(new_keys) == dotpath_expression:
+                    del obj[key]
+                else:
+                    recursive_remove(obj[key], new_keys)
+        elif isinstance(obj, CommentedSeq):
+            for i, item in enumerate(obj):
+                new_keys = keys + [str(i)]
+                recursive_remove(item, new_keys)
+
+    YAML = ruamel.yaml.YAML()
+    data = YAML.load(yaml_data)
+    recursive_remove(data, [])
+
+    # Use a StringIO to capture the output
+    output_stream = StringIO()
+    YAML.dump(data, output_stream)
+    return output_stream.getvalue()
+
+
+def load_and_validate(file):
 
     try:
-        defaults_file = options["<file>"]
+        with open(os.path.expanduser(file), 'r') as fh:
+            file_contents = fh.read()
 
-        if options["validate"]:
-          command = "validate"
-        elif options["docgen"]:
-          command = "docgen"
-          _OUTPUT_FILENAME = options["<output>"]
-        else:
-          command = "unknown"
+        _log.debug(f"Performing pre-processor transform for WORX comments")
+        # Use regular expression to replace '# WORX_...' with 'WORX_:...'
+        modified_contents = re.sub(r'#\s*WORX_\s*(.*?)\s*=', r'WORX_\1: ', file_contents)
 
+        yaml_content = yaml.safe_load(modified_contents)
 
-        key_handlers = {
-            "common_config": process_common_block,
-            "pattern_features": process_feature_block,
-            "pattern_payload": process_payload_block,
-        }
+        if yaml_has_path(yaml_content, "common_config._docgen.ignored_paths"):
+            paths = yaml_get_value_by_dotpath(yaml_content, "common_config._docgen.ignored_paths")
+            _log.debug(f"Pruning {len(paths)} nodes from YAML tree")
+            modified_contents = yaml_remove_keys_with_dotpath(modified_contents, paths)
 
-        with open(defaults_file, "r") as file:
-            try:
-                yaml_data = yaml.safe_load(file)
-            except yaml.YAMLError as e:
-                _log.debug(f"YAML parsing error: {e}")
-                return
+        config_data = yaml.safe_load(modified_contents)
+        _log.debug(f"Pre-processor transform complete")
 
-        for key in yaml_data.keys():
-            if key in key_handlers:
-                key_handlers[key](yaml_data[key], block_id=key, action=command)
-            else:
-                process_unknown_block(yaml_data[key], block_id=key)
+    except FileNotFoundError:
+        _log.error(f"Input file '{file}' not found.")
 
-    except AssertionError as e:
-        _log.warn(e)
-        clean_up(-1)
+    # Parse and validate the YAML data using Pydantic
+    try:
+        pattern_config = Configuration(**config_data)
+        _log.info("YAML configuration is valid.")
+        return pattern_config
 
-    clean_up()
+    except Exception as e:
+        exit_with_error(f"YAML configuration is invalid: {e}")
 
 
+def render_model_with_template(template_base, template_name, model):
+    _log.debug(f"Processing data using template {template_base}/{template_name}")
+
+    # Create the jinja2 environment. Notice the use of trim_blocks,
+    # which greatly helps control whitespace.
+    j2_env = Environment(loader=FileSystemLoader(template_base), trim_blocks=True)
+
+    # Add our custom filters
+    j2_env.filters["j2f_is_simple_variable"] = j2f_is_simple_variable
+    j2_env.filters["j2f_bool_to_feature_flag"] = j2f_bool_to_feature_flag
+    j2_env.filters["j2f_is_required"] = j2f_is_required
+    j2_env.filters["j2f_is_disruptive"] = j2f_is_disruptive
+    j2_env.filters["j2f_to_code_snippet"] = j2f_to_code_snippet
+
+    template = j2_env.get_template(template_name)
+    rendered_data = template.render(data=model)
+    return rendered_data
+
+
+def debug_option(*_, **kwargs):
+    """
+    Add a ``--debug`` option to print out a stacktrace when an error occurs.
+    """
+
+    def callback(ctx, _, value):
+        if not value or ctx.resilient_parsing:
+            return
+
+        import logging
+        _log.setLevel(logging.DEBUG)
+
+    kwargs.setdefault("is_flag", True)
+    kwargs.setdefault("expose_value", False)
+    kwargs.setdefault("help", "Show more verbose logging")
+    kwargs["callback"] = callback
+    return click.decorators.option("--debug", **kwargs)
+
+
+@click.group(context_settings={"help_option_names": ["-h", "--help"]})
+@click.pass_context
+@debug_option()
+def worx_pattern_tool(ctx):
+    pass
+
+
+@worx_pattern_tool.command()
+@click.argument("file")
+@click.pass_context
+@debug_option()
+def validate(ctx, file):
+    """Validate YAML file syntax and required keys."""
+    _log.debug(f"validate {file}")
+    load_and_validate(file)
+
+
+@worx_pattern_tool.command()
+@click.option(
+    "-t",
+    "--template-root",
+    default=f"{os.getenv('AWSH_ROOT')}/etc/worx.d/templates",
+    help="Path to the templates base dir. Defaults to using ${AWSH_ROOT}/etc/worx.d/templates",
+)
+@click.argument("file")
+@click.argument("output")
+@click.pass_context
+@debug_option()
+def docgen(ctx, template_root, file, output):
+    """Create documentation in Markdown format."""
+
+    _log.debug(f"template_root set to {template_root}")
+    ctx.obj = {"template_root": template_root}
+    # template_root = ctx.obj["template_root"]
+
+    # Your documentation generation code here
+    _log.debug(f"docgen reading from {file}")
+    _log.debug(f"docgen using templates from {template_root}")
+    _log.debug(f"docgen writing to {output}")
+
+    pattern_config = load_and_validate(file)
+
+    content = []
+    # for section in [ "common_config", "pattern_features", "pattern_payload" ]:
+    content.append(render_model_with_template(template_root, "PatternFeatures.j2", pattern_config.pattern_features))
+    content.append(render_model_with_template(template_root, "PatternOptions.j2", pattern_config.pattern_payload.defaults))
+
+    if hasattr(pattern_config.pattern_payload, "unit_defaults"):
+      if hasattr(pattern_config.pattern_payload.unit_defaults, "unit_features"):
+        content.append(render_model_with_template(template_root, "UnitFeatures.j2", pattern_config.pattern_payload.unit_defaults.unit_features))
+
+      unit_options = { k: v for k,v in pattern_config.pattern_payload.unit_defaults if k != "unit_features" }
+      content.append(render_model_with_template(template_root, "UnitOptions.j2", unit_options))
+
+    _log.info(f"Writing to {output}")
+    with open(os.path.expanduser(output), "w") as fh:
+        for section in content:
+            fh.write(section)
+
+
+###############################################################################
+# Main
+###############################################################################
 if __name__ == "__main__":
-   try:
-    options = docopt.docopt(__doc__)
-    main(options)
-
-    # Handle invalid options
-   except docopt.DocoptExit as e:
-    print(e)
+    worx_pattern_tool()
