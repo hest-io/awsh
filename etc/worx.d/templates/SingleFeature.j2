@@ -1,0 +1,45 @@
+
+### {{ feature_name }}
+
+
+:::feature Feature Information
+
+<div className="features-table">
+
+|   |   |
+|---|---|
+| Description    | {{ feature_options.md.description }}                            |
+| Default State  | {{ feature_options.enabled|j2f_bool_to_feature_flag }} |
+{% if feature_options.md.disruptive %}
+| Disruptive?    | <span className="badge-ff-is-disruptive">Disruptive</span>   |
+{% else %}
+| Disruptive?    | <span className="badge-ff-not-disruptive">Non-Disruptive</span>   |
+{% endif %}
+{% if feature_options.md.allowed_values %}
+| Allowed Values    | {{ feature_options.md.allowed_values }} |
+{% endif %}
+
+
+</div>
+
+:::
+
+{% if feature_options.md.image %}
+<div className="embed-container">
+
+![Feature]({{ feature_options.md.image }}) <div className='figure-caption'>Figure: Feature Illustration</div>
+
+</div>
+{% endif %}
+
+{% if feature_options.dict().keys()|length > 2 %}
+**Feature Options**
+{% endif %}
+
+{% for opt, opt_value in feature_options.dict().items() if opt not in ["enabled", "md"] %}
+
+  {% include 'SingleOption.j2' %}
+
+{% endfor %}
+
+

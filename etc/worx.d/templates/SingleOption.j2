@@ -1,0 +1,47 @@
+
+- `{{ opt }}`
+
+    <div className="options-table">
+
+    |   |   |
+    |---|---|
+{% if opt_description %}
+    | Description   | {{ opt_description }} |
+{% endif %}
+{% if opt_value|j2f_is_required %}
+    | Setting is?     | Required |
+{% if opt_value|j2f_is_simple_variable %}
+    | Example value | `{{ opt_value|replace("required-","")|replace("required_","")|replace("REQUIRED-","")|replace("REQUIRED_","") }}` |
+
+    </div>
+
+{% else %}
+    | Example value | See below for default <i class="fa-solid fa-arrow-down"></i> |
+
+    </div>
+
+    ```
+    {{ opt_value|j2f_to_code_snippet|indent }}
+    ```
+
+{% endif %}
+{% else %}
+    | Setting is?     | Optional |
+{% if opt_value|j2f_is_simple_variable %}
+    | Default value | `{{ opt_value|replace("required-","")|replace("required_","")|replace("REQUIRED-","")|replace("REQUIRED_","") }}` |
+
+    </div>
+
+{% else %}
+    | Default value | See below for default <i class="fa-solid fa-arrow-down"></i> |
+
+    </div>
+
+    ```
+    {{ opt_value|j2f_to_code_snippet|indent }}
+    ```
+
+{% endif %}
+
+{% endif %}
+
