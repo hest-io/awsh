@@ -1,3 +1,4 @@
+{% if data.items()|length > 0 %}
 ## Pattern Features
 
 {% for feature_name, feature_options in data.items() %}
@@ -5,3 +6,9 @@
   {% include 'SingleFeature.j2' %}
 
 {% endfor %}
+{% else %}
+## Pattern Features
+
+There are currently no pattern level features available yet for this worX pattern. Have one in mind that
+you think we should be adding? [Get in touch and let us know](https://join.slack.com/t/hestio/shared_invite/zt-1wtpdy3s4-FI8nvTS3FWelU7IPLNnAEA)
+{% endif %}

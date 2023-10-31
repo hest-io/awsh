@@ -106,7 +106,7 @@ class PatternPayload(BaseModel):
 
 class Configuration(BaseModel):
     common_config: CommonConfig
-    pattern_features: Dict[str, Feature]
+    pattern_features: Dict[str, Feature] = { }
     pattern_payload: PatternPayload
 
 
@@ -362,7 +362,7 @@ def docgen(ctx, template_root, file, output):
     pattern_config = load_and_validate(file)
 
     content = []
-    # for section in [ "common_config", "pattern_features", "pattern_payload" ]:
+
     content.append(render_model_with_template(template_root, "PatternFeatures.j2", pattern_config.pattern_features))
     content.append(render_model_with_template(template_root, "PatternOptions.j2", pattern_config.pattern_payload.defaults))
 
