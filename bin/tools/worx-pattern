@@ -6,6 +6,7 @@ import json
 import click
 import re
 import functools
+import textwrap
 
 import ruamel.yaml
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
@@ -251,8 +252,18 @@ def yaml_remove_key_with_dotpath(yaml_data, dotpath_expression):
 def load_and_validate(file):
 
     try:
+
         with open(os.path.expanduser(file), 'r') as fh:
             file_contents = fh.read()
+
+        base_dir = os.path.dirname(file)
+        _log.debug(f"Searching for unit-defaults in {base_dir}")
+        unit_defaults = f"{base_dir}/unit-defaults.yml"
+        if os.path.exists(unit_defaults):
+          _log.debug(f"Appending {unit_defaults}")
+          with open(os.path.expanduser(unit_defaults), 'r') as fh:
+              unit_defaults_contents = fh.read()
+              file_contents = file_contents + textwrap.indent(unit_defaults_contents, "  ")
 
         _log.debug(f"Performing pre-processor transform for WORX comments")
         # Use regular expression to replace '# WORX_...' with 'WORX_:...'
