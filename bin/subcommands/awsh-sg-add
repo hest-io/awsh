@@ -22,12 +22,13 @@ Options:
                          specified VPC
     -g <sg-id>, --sg-id=sg-id
                          The new SecurityGroup ID to add to the instance
-    -y, --yes            Required to actually do anything. Otherwise it just
+    -y, --yes            Required to actually do anything. Otherwise, it just
                          lists what would have been affected [default: False]
     -h, --help           Show this help message and exit
     --debug              Show more verbose logging
 
 """
+from __future__ import print_function
 from future.utils import iteritems
 
 import os
@@ -38,6 +39,7 @@ from awshutils import check_imports, clean_up
 import docopt
 from tabulate import tabulate
 from operator import itemgetter
+import boto3
 
 ###############################################################################
 # CONFIG - Begin
@@ -49,8 +51,6 @@ from operator import itemgetter
 
 _log = AWSHLog(__file__)
 check_imports()
-
-from boto import ec2
 
 ###############################################################################
 # CONFIG - Begin
@@ -82,14 +82,14 @@ def main(options):
     try:
 
         aws_region = os.getenv('AWS_DEFAULT_REGION')
-        ec2_conn = ec2.connect_to_region(aws_region)
-        reservations = ec2_conn.get_all_reservations()
+        ec2_client = boto3.client('ec2', region_name=aws_region)
+        reservations = ec2_client.describe_instances()['Reservations']
 
         # First build a list of all potential instances and from that build a
         # sub-set of instances to action by applying the filters from command
         # line args
 
-        all_instances = [ r.instances[0] for r in reservations ]
+        all_instances = [r['Instances'][0] for r in reservations]
         _log.info('Discovered {} EC2 instances'.format(len(all_instances)))
 
         # Now filter the list as many more times as needed, based on the
@@ -98,13 +98,13 @@ def main(options):
         next_filter = options['--vpc-filter']
         if next_filter is not None:
             _log.info('Applying filter by searching for matching VPC {} association'.format(next_filter))
-            all_instances = [ i for i in all_instances if i.vpc_id == next_filter]
+            all_instances = [i for i in all_instances if i['VpcId'] == next_filter]
             _log.info('After filtering by VPC we now have {} instances'.format(len(all_instances)))
 
         next_filter = options['--sg-filter']
         if next_filter is not None:
             _log.info('Applying filter by searching for matching SG {} association'.format(next_filter))
-            all_instances = [ i for i in all_instances if next_filter in [g.id for g in i.groups] ]
+            all_instances = [i for i in all_instances if next_filter in [g['GroupId'] for g in i['SecurityGroups']]]
             _log.info('After filtering by SG we now have {} instances'.format(len(all_instances)))
 
         next_filter = options['--tag-filter']
@@ -114,7 +114,7 @@ def main(options):
             # Handle the edge case where our separator is actually present in the tag value
             tag_value = '|'.join(parts[1:])
             _log.info('Applying filter by searching for Tag name [{}] with value [{}]'.format(tag_name, tag_value))
-            all_instances = [ i for i in all_instances if ( tag_name in i.tags.keys() and tag_value == i.tags[tag_name] ) ]
+            all_instances = [i for i in all_instances if (tag_name in [tag['Key'] for tag in i.get('Tags', [])] and tag_value == [tag['Value'] for tag in i.get('Tags', []) if tag['Key'] == tag_name][0])]
             _log.info('After filtering by Tags we now have {} instances'.format(len(all_instances)))
 
         # Filter the list by removing any instances that don't need to be actioned
@@ -122,35 +122,34 @@ def main(options):
         next_filter = options['--sg-id']
         if next_filter is not None:
             _log.info('Applying filter by searching matching SG {} association already existing'.format(next_filter))
-            all_instances = [ i for i in all_instances if next_filter not in [g.id for g in i.groups] ]
+            all_instances = [i for i in all_instances if next_filter not in [g['GroupId'] for g in i['SecurityGroups']]]
             _log.info('After filtering by existing SG we now have {} instances'.format(len(all_instances)))
-
 
         # What remains is a list of instances to action
         modified_count = 0
         for i in all_instances:
 
-            if len(i.interfaces) > 1:
+            if len(i['NetworkInterfaces']) > 1:
 
-                _log.info('Instance {} has multiple ENIs. Looping through interfaces instead'.format(i.id))
-                for eni in i.interfaces:
-                    eni_sgids = [ g.id for g in eni.groups ]
+                _log.info('Instance {} has multiple ENIs. Looping through interfaces instead'.format(i['InstanceId']))
+                for eni in i['NetworkInterfaces']:
+                    eni_sgids = [g['GroupId'] for g in eni['Groups']]
                     eni_sgids.append(options['--sg-id'])
 
                     if options['--yes'] is True:
-                        ec2_conn.modify_network_interface_attribute(eni.id, 'groupSet', eni_sgids, dry_run=False)
+                        ec2_client.modify_network_interface_attribute(NetworkInterfaceId=eni['NetworkInterfaceId'], Groups=eni_sgids, DryRun=False)
                         modified_count += 1
                     else:
                         _log.warning('Dry-run mode active not making any change this run')
 
             else:
 
-                eni_sgids = [ g.id for g in i.groups ]
+                eni_sgids = [g['GroupId'] for g in i['SecurityGroups']]
                 eni_sgids.append(options['--sg-id'])
-                _log.info('Instance {} being modified. New SG list will be {}'.format(i.id, eni_sgids))
+                _log.info('Instance {} being modified. New SG list will be {}'.format(i['InstanceId'], eni_sgids))
 
                 if options['--yes'] is True:
-                    i.modify_attribute('groupSet', eni_sgids, dry_run=False)
+                    ec2_client.modify_instance_attribute(InstanceId=i['InstanceId'], Groups=eni_sgids, DryRun=False)
                     modified_count += 1
                 else:
                     _log.warning('Dry-run mode active not making any change this run')
