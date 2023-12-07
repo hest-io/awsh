@@ -133,8 +133,9 @@ function _aws_load_credentials_from_json {
     _aws_update_aws_session "${AWS_CONFIG_FILE}"
 
     # Now set the token expiry time so that it can be used for the PS1 prompt
-    let AWS_TOKEN_EXPIRY=$(date +"%s" --date "$(_time_from_epoch "${AWS_EXPIRY}")")
-    local expiry_time=$(date +"%Y-%m-%d %H:%M:%S" --date "$(_time_from_epoch "${AWS_EXPIRY}")")
+    # shellcheck disable=SC2219
+    let AWS_TOKEN_EXPIRY=$(_time_to_epoch "$(_time_convert_to_date "${AWS_EXPIRY}")")
+    local expiry_time=$(_time_convert_to_date "${AWS_EXPIRY}")
 
     # Check to determine if we have a valid set of credentials for use
     if _aws_is_authenticated ; then
@@ -170,9 +171,9 @@ function _aws_load_credentials_from_instance {
 
     _aws_logout
 
-    local instance_profile_id="$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)"
+    local instance_profile_id="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.instanceId')"
     local instance_region="$(curl -s http://169.254.169.254/latest/dynamic/instance-identity/document | jq -r '.region')"
-    local instance_credentials_url="http://169.254.169.254/latest/meta-data/iam/security-credentials/${instance_profile_id}"
+    local instance_credentials_url="http://169.254.169.254/latest/meta-data/identity-credentials/ec2/security-credentials/ec2-instance"
 
     AWS_ID_NAME="instance-profile/${instance_profile_id}"
     AWS_DEFAULT_REGION="${instance_region}"
@@ -182,6 +183,31 @@ function _aws_load_credentials_from_instance {
     _aws_load_credentials_from_json <( curl -s ${instance_credentials_url} | jq '. + { SessionToken: .Token} | { Credentials: . }' )
 
 }
+
+
+function _aws_assume_role_and_load_credentials {
+
+    aws_role_arn="${1}"
+    aws_mfa_token="${2}"
+
+    AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
+
+    # Build the assume-role command, added the MFA token if provided
+    _CMD_ASSUME_ROLE_ARGS="--role-session-name customer-access --role-arn ${aws_role_arn}"
+    if [ -n "${aws_mfa_token}" ]; then
+      _screen_info "External ID Token provided. Adding to assumed role"
+      _CMD_ASSUME_ROLE_ARGS="${_CMD_ASSUME_ROLE_ARGS} --external-id ${aws_mfa_token}"
+    fi
+
+    eval "aws sts assume-role ${_CMD_ASSUME_ROLE_ARGS}" | tee tee "${AWS_CONFIG_FILE}"
+
+    if [ ${PIPESTATUS[0]} -eq 0 ]; then
+      _aws_load_credentials_from_json "${AWS_CONFIG_FILE}"
+    fi
+
+}
+
+
 
 
 function _aws_load_credentials_from_cloudshell {
@@ -522,13 +548,14 @@ function _aws_save_account_metadata {
     if _aws_is_authenticated ; then
 
         AWS_ACCOUNT_NUMBER="$(aws sts get-caller-identity | jq -r '.Account')"
-        CHECK_AWS_ACCOUNT_ALIAS_CONTENT="$(aws iam list-account-aliases | jq -r '.AccountAliases[0]')"
-        if [ $CHECK_AWS_ACCOUNT_ALIAS_CONTENT != null ]; then
+        CHECK_AWS_ACCOUNT_ALIAS_CONTENT="$(aws iam list-account-aliases 2>/dev/null | jq -r '.AccountAliases[0]')"
+
+        if [ -n "${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}" ] && [ "null" != "${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}" ]; then
             AWS_ACCOUNT_ALIAS=${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}
             _screen_note "AWS_ACCOUNT_ALIAS...... ${CHECK_AWS_ACCOUNT_ALIAS_CONTENT}"
         else
-            AWS_ACCOUNT_ALIAS=${AWS_ACCOUNT_NUMBER}
-            _screen_note "AWS_ACCOUNT_ALIAS...... null"
+            AWS_ACCOUNT_ALIAS="AC-${AWS_ACCOUNT_NUMBER}"
+            _screen_note "AWS_ACCOUNT_ALIAS...... (none or no permission to read)"
             _screen_note "AWS_ACCOUNT_ALIAS...... Redefined to have same value as: AWS_ACCOUNT_NUMBER=${AWS_ACCOUNT_NUMBER}"
         fi
         # Create the metadata file if we don't already have one

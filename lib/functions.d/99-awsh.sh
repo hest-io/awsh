@@ -119,6 +119,10 @@ function awsh {
             fi
         ;;
 
+        assume|sudo)
+            _aws_assume_role_and_load_credentials "${@}"
+        ;;
+
         logout|session-purge)
             _aws_logout
         ;;

@@ -1,5 +1,3 @@
-
-
 # Attempts to link current branch with matching branch at origin
 # _git_upstream_branch_match
 function _git_ubm {
