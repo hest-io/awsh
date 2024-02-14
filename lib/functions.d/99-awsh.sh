@@ -17,7 +17,7 @@ function _awsh_show_completions {
     local DEFAULT_OUT="${HOME}/.awsh/log/awsh-cli.log"
     local SUBCOMMAND_ROOT="${AWSH_ROOT}/bin/subcommands"
     local SUBCOMMANDS="$(find ${SUBCOMMAND_ROOT} -type f -name 'awsh-*' -exec basename {} \; 2> /dev/null | sed -e 's/awsh-//g')"
-    local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' 'creds')
+    local VS_SUBCOMMANDS=( 'login' 'logout' 'region' 'session-save' 'session-load' 'session-purge' 'creds' 'console-login' 'sudo' 'region')
     local CLOUDBUILDER_ROOT="~/.cloudbuilder"
 
     # Add all of our discovered sub-commands
@@ -121,6 +121,19 @@ function awsh {
 
         assume|sudo)
             _aws_assume_role_and_load_credentials "${@}"
+        ;;
+
+        console-login)
+            _aws_get_console_presigned_url
+        ;;
+
+        sso-login)
+            if [[ -e ~/workspace/etc/aws-token ]]; then
+              _screen_info "AWS bearer token detected. Attempting to acquire credentials"
+              _aws_load_credentials_from_json <( _aws_get_sso_account_credentials "${@}" )
+            else
+              _screen_error "No AWS bearer token detected in ~/workspace/etc/aws-token"
+            fi
         ;;
 
         logout|session-purge)

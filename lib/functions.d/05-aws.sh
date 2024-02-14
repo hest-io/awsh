@@ -189,20 +189,27 @@ function _aws_assume_role_and_load_credentials {
 
     aws_role_arn="${1}"
     aws_mfa_token="${2}"
+    token_duration="${3}"
 
-    AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
+    if _aws_is_authenticated ; then
+      REQUESTED_TOKEN_DURATION="${token_duration:-$DEFAULT_TOKEN_DURATION}"
+      AWS_CONFIG_FILE=$(mktemp /tmp/awsmfaXXXX)
 
-    # Build the assume-role command, added the MFA token if provided
-    _CMD_ASSUME_ROLE_ARGS="--role-session-name customer-access --role-arn ${aws_role_arn}"
-    if [ -n "${aws_mfa_token}" ]; then
-      _screen_info "External ID Token provided. Adding to assumed role"
-      _CMD_ASSUME_ROLE_ARGS="${_CMD_ASSUME_ROLE_ARGS} --external-id ${aws_mfa_token}"
-    fi
+      # Build the assume-role command, added the MFA token if provided
+      _CMD_ASSUME_ROLE_ARGS="--role-session-name customer-access --role-arn ${aws_role_arn} --duration-seconds ${REQUESTED_TOKEN_DURATION}"
+      if [ -n "${aws_mfa_token}" ]; then
+        _screen_info "External ID Token provided. Adding to assumed role"
+        _CMD_ASSUME_ROLE_ARGS="${_CMD_ASSUME_ROLE_ARGS} --external-id ${aws_mfa_token}"
+      fi
 
-    eval "aws sts assume-role ${_CMD_ASSUME_ROLE_ARGS}" | tee tee "${AWS_CONFIG_FILE}"
+      eval "aws sts assume-role ${_CMD_ASSUME_ROLE_ARGS}" | tee tee "${AWS_CONFIG_FILE}"
 
-    if [ ${PIPESTATUS[0]} -eq 0 ]; then
-      _aws_load_credentials_from_json "${AWS_CONFIG_FILE}"
+      if [ ${PIPESTATUS[0]} -eq 0 ]; then
+        _aws_load_credentials_from_json "${AWS_CONFIG_FILE}"
+      fi
+
+    else
+        _screen_error 'This command requires an active AWS session. Login first please!'
     fi
 
 }
@@ -638,11 +645,33 @@ function _aws_session_load {
 }
 
 
+function _aws_get_console_presigned_url {
+    if _aws_is_authenticated ; then
+      ${AWSH_ROOT}/bin/tools/awsh-aws-console --stdout
+    else
+        _screen_error 'This command requires an active AWS session. Login first please!'
+    fi
+}
+
+
+
 # Export our helper functions
+export -f _aws_assume_role_and_load_credentials
+export -f _aws_is_authenticated
+export -f _aws_load_account_metadata
+export -f _aws_load_basic_credentials
+export -f _aws_load_credentials_from_cloudshell
+export -f _aws_load_credentials_from_instance
+export -f _aws_load_credentials_from_json
+export -f _aws_load_googleauth_credentials
+export -f _aws_load_krb5formauth_credentials
+export -f _aws_load_mfaauth_credentials
+export -f _aws_load_sso_credentials
 export -f _aws_login
 export -f _aws_logout
 export -f _aws_region
-export -f _aws_session_save
+export -f _aws_save_account_metadata
 export -f _aws_session_load
+export -f _aws_session_save
+export -f _aws_show_credentials
 export -f _aws_update_aws_session
-export -f _aws_load_credentials_from_json
